@@ -39,6 +39,7 @@ class Main:
             fBest_List.append(res)
             print("========模拟退火运行", index, "次结束，总带宽Bth:", BTH[index], "xBest:", xBest, "fxBest:", fxBest,
                   "真实优化目标结果为：", res)
+
             optimizeParam.xInitial[:] = xBest[:]  # 将本轮优化结果作为下轮优化的初始参数
 
         # 将结果保存为txt文件

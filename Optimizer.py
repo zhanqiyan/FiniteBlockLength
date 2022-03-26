@@ -57,7 +57,7 @@ class Optimizer:
             for k in range(nMarkov):  # 内循环，循环次数为Markov链长度
                 totalMar += 1  # 总 Markov链长度计数器
                 ##================================产生新解XNew=================================================##
-                xNew = self.state_generate_fuc(nVar, xNow, xMax, xMin, scale, m, theta_lo, theta_hi, func_name)
+                xNew = self.state_generate_fuc(nVar, xNow, xMax, xMin, scale, m, theta_lo, theta_hi, func_name_subject)
 
                 ##=======================计算目标函数和能量差=====================================================##
                 # 调用目标函数计算新解的目标函数值
@@ -87,6 +87,7 @@ class Optimizer:
                         xBest[:] = xNew[:]
                         totalImprove += 1
                         # scale = scale * 0.99  # 可变搜索步长，逐步减小搜索范围，提高搜索精度
+                # print("总运行次数：", totalMar, "运行中间最佳目标结果fxBest：", fxBest)
 
             ##===========================温度更新函数========================================================##
             # 缓慢降温至新的温度，降温曲线：T(k)=alfa*T(k-1)
@@ -99,43 +100,30 @@ class Optimizer:
             # fxBest = self.targetFunction.func_target_subject(func_name_subject, xBest, mk)  # 由于迭代后惩罚因子增大，需随之重构增广目标函数
             if totalMar % 2000 == 0:
                 print("=============当前温度为：", tNow, " 外层循环次数为：", kIter, "===============")
-                print("总运行次数：", totalMar, "运行中间最佳目标结果fxBest：", fxBest)
+                print("总运行次数：", totalMar, "运行中间最佳目标结果fxBest：", fxBest, "xBest:", xBest)
+
             ##============================= 结束模拟退火过程 ================================================##
         return xBest, fxBest
 
     # 产生问题的初值解和初值解对应的函数值
     # 同时设定仿真参数的最小值和最大值
     def param_initial(self, xMin, xMax, xInitial, m, func_name_subject):
-        error = xInitial[18:]
-        snr = self.targetFunction.snr
-        for i in range(self.targetFunction.K):
-            error_i = error[i]
-            SNR = snr[i]
-            Bmin = self.findmin_B(error_i, SNR, self.theta_min, m)
-            xMin[i] = Bmin
-            xInitial[i] = Bmin
-            xMax[i] = Bmin + 18000
+        sum = 0
+        for index in range(self.targetFunction.B_num - 1):
+            sum += xInitial[index]
+        xInitial[self.targetFunction.B_num - 1] = self.targetFunction.Btotal - sum
         fxInitial = self.targetFunction.func_target_subject(func_name_subject, xInitial, 0)  # m(k)：惩罚因子，初值为 1
         print("======初始化解，xInitial:", xInitial, "初始化结果fxInitial:", fxInitial, "==========")
         return xMin, xMax, xInitial, fxInitial
-
-    def findmin_B(self, error, snr, thetamin, m):
-        Bintial = 10000
-        while True:
-            EC = self.bisection.EC_B_theta(Bintial, error, snr, thetamin, m)
-            if EC > 0:
-                break
-            Bintial += 200
-        return Bintial
 
     # 状态产生函数：根据当前解产生新解
     # 解参数X为1X27维向量，每一维代表含义：
     # B1,B2,B3,B4,B5,B6,B7,B8,B9
     # theta1,theta2,theta3,theta4,theta5,theta6,theta7,theta8,theta9
     # e1,e2,e3,e4,e5,e6,e7,e8,e9
-    def state_generate_fuc(self, nVar, xNow, xMax, xMin, scale, m, theta_lo, theta_hi, func_name):
+    def state_generate_fuc(self, nVar, xNow, xMax, xMin, scale, m, theta_lo, theta_hi, func_name_subject):
         ##================================产生新解XNew=================================================##
-        xNew = self.generate_random_solution(nVar, xNow, xMax, xMin, scale, m, theta_lo, theta_hi, func_name)
+        xNew = self.generate_random_solution(nVar, xNow, xMax, xMin, scale, m, func_name_subject)
 
         ##================================使用二分法得到theta=================================================##
         # theta1,theta2,theta3,theta4,theta5,theta6,theta7,theta8,theta9
@@ -148,20 +136,21 @@ class Optimizer:
             SNR = snr[i]
             error_i = error[i]
             theta_single = self.bisection.calculate_theta_by_bisection(B_i, error_i, SNR, m, theta_lo, theta_hi)
-            xNew[self.targetFunction.K + i] = theta_single
+            xNew[self.targetFunction.B_num + i] = theta_single
         # print("====================二分法产生一个新解xNew:", xNew, "=======================")
         return xNew
 
     # 通过随机扰动产生新解，并且保证新解是有效：给定error和B，能通过二分法找到有效的theta，使得 EC=Rth,具体做法：
     #   1、随机扰动B,然后根据B和theta,根据单调性找到error
     #   2、然后在根据得到的error和B，根据二分法去求解theta，得到新解
-    def generate_random_solution(self, nVar, xNow, xMax, xMin, scale, m, theta_lo, theta_hi, func_name):
+    def generate_random_solution(self, nVar, xNow, xMax, xMin, scale, m, func_name_subject):
         # print("==============================产生一次新解====================================")
         snr = self.targetFunction.snr
         ##=======================随机扰动产生新解==================================================##
         while True:
             ##=======================随机扰动产生新解,随机扰动B得到error==================================================##
-            xNew = self.generate_xNew_by_B(nVar, xNow, xMax, xMin, scale, m)
+            # xNew = self.generate_xNew_by_B(nVar, xNow, xMax, xMin, scale, m)
+            xNew = self.generate_xNew_by_B_noarq(nVar, xNow, xMax, xMin, scale, m, func_name_subject)
 
             ##=======================判断新解是否有效==================================================##
             # theta1,theta2,theta3,theta4,theta5,theta6,theta7,theta8,theta9
@@ -176,10 +165,62 @@ class Optimizer:
                 single_func = self.bisection.EC_B_theta(B_i, error_i, SNR, self.theta_min, m)
                 if single_func < 0:
                     flag = False
+                    break
             if flag:
                 break
 
         # print("验证通过，得到一个新解xNew:", xNew)
+        return xNew
+
+    # 随机扰动B产生新解
+    # 随机扰动B,然后根据B和theta,根据单调性找到error
+    def generate_xNew_by_B_noarq(self, nVar, xNow, xMax, xMin, scale, m, func_name_subject):
+        xNew = np.zeros((nVar))  # 新解
+        xNew[:] = xNow[:]
+
+        # 参数 B1,B2,B3,B4,B5,B6,B7,B8,B9由随机产生
+        # 为保证满足所有带宽之和等于Btotal，B1,B2,B3,B4,B5,B6,B7,B8由随机扰动方式产生，B9 = Btotal-其余八个带宽之和
+        v = random.randint(0, 7)  # 产生 [0,random_var_num-1]即[0,7]之间的随机数
+
+        while True:
+            # 1 随机产生B
+            flag = False
+            while True:
+                # random.normalvariate(0, 1)：产生服从均值为0、标准差为 1 的正态分布随机实数
+                xNew[v] = xNow[v] + scale * (xMax[v] - xMin[v]) * random.normalvariate(0, 1)
+                xNew[v] = max(min(xNew[v], xMax[v]), xMin[v])  # 保证新解在 [min,max] 范围内
+                sum = 0
+                for index in range(self.targetFunction.B_num - 1):
+                    sum += xNew[index]
+                xNew[self.targetFunction.B_num - 1] = self.targetFunction.Btotal - sum
+                if xNew[self.targetFunction.B_num - 1] >= xMin[self.targetFunction.B_num - 1]:
+                    flag = True
+                    break
+            if flag:
+                break
+
+        error_initial = 0.0001
+        error_MAx = 0.2
+        error_max = error_initial
+        X_error = np.zeros(nVar)
+        X_error[:] = xNew[:]
+        func_max = self.targetFunction.func_target_subject(func_name_subject, X_error, 0)
+
+        # X_last = np.zeros(nVar)
+        # X_last[:] = X_error[:]
+        # B = X_error[v]
+        # theta = X_error[9 + v]
+        # SNR = self.targetFunction.snr[v]
+        # error = X_error[18 + v]
+
+        while error_initial < error_MAx:
+            X_error[18 + v] = error_initial
+            func = self.targetFunction.func_target_subject(func_name_subject, X_error, 0)
+            if func > func_max:
+                func_max = func
+                error_max = error_initial
+            error_initial += 0.01
+        xNew[18 + v] = error_max
         return xNew
 
     # 随机扰动B产生新解

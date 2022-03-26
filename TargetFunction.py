@@ -15,8 +15,8 @@ class TargetFunction:
         self.snr = [18.25, 32, 29.25, 15.5, 10, 21, 23.75, 26.5, 12.75]
         self.bus_pmu = {2: 1, 4: 2, 5: 3, 6: 4, 7: 5, 8: 6, 9: 7, 11: 8, 13: 9}  # bus与pmu安装位置和索引对应map
         self.install_X = np.array([0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0]).reshape((14, 1))  # PMU安装向量
-        self.m = 1000
 
+        self.m = 1000
         # 优化参数X
         # 参数的个数设置
         # 参数为1X27维向量，每一维代表含义：
@@ -24,7 +24,7 @@ class TargetFunction:
         # theta1,theta2,theta3,theta4,theta5,theta6,theta7,theta8,theta9
         # e1,e2,e3,e4,e5,e6,e7,e8,e9
         # B、theta、error的索引对应着PMU索引
-        self.B_num = self.K  # math.ceil(self.K / 2)  参数带宽的个数     等于PMU数量
+        self.B_num = self.K  # 参数带宽的个数     等于PMU数量
         self.theta_num = self.K  # theta参数个数，等于PMU数量
         self.error_num = self.K  # 误码率error参数个数，等于PMU数量
 
@@ -104,7 +104,7 @@ class TargetFunction:
         lambda_P = self.lambdaP(B, theta, error, self.N)
         b = self.caculate_b(self.H, lambda_P, self.install_X)
         one_N = np.ones((1, self.N), np.int8)
-        return np.matmul(one_N, b)[0]
+        return np.matmul(one_N, b)[0, 0]
 
     # OS优化目标函数
     def func_OS(self, B, theta, error):
@@ -164,19 +164,6 @@ class TargetFunction:
         return np.matmul(np.matmul(H, lambda_P), install_X)
 
     ##===================================计算出所有可能的alpham的取值===============================================##
-    # # 计算出所有可能的alpham的取值
-    # def backTracking_alpham(self, index, n, temp_result, result):
-    #     if index == n:
-    #         result.append(temp_result[:])
-    #         return
-    #     for i in range(2):
-    #         # 如果总线上没有安装PMU，则必然只能为0 提前排除掉其为1的可能性
-    #         if self.install_X[index, 0] == 0 and i == 1:
-    #             continue
-    #         temp_result.append(i)
-    #         self.backTracking_alpham(index + 1, n, temp_result, result)
-    #         del temp_result[-1]
-
     # 计算出所有可能的alpham的取值
     def backTracking_alpham(self, index, n, temp_result, result):
         if index == n:
@@ -210,7 +197,6 @@ class TargetFunction:
         return flag
 
     ##===================================约束条件===============================================##
-
     # 总带宽约束条件
     # 分别大于0 且 小于Btotal
     # 总带宽之和要等与Btotla,满足此条件做法：

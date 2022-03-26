@@ -1,14 +1,20 @@
+from TargetFunction import TargetFunction
+from Bisection import Bisection
+
+
 # 设定模拟退火仿真初始参数类
 class OptimizeParam:
     def __init__(self):
         self.B_FDMA = [157000, 159000, 161000, 163000, 165000, 167000, 169000, 171000, 173000, 175000, 177000,
                        179000, 181000, 183000, 185000, 187000, 189000, 191000, 193000, 195000, 197000,
                        199000]  # 修改程序 更改snr位置 增大snr 增大减小snr
+        self.targetFunction = TargetFunction()
+        self.bisection = Bisection()
 
     def ParameterSetting(self, algorithm_name):
         self.cName = "IEEE_bus_14"  # 定义问题名称
         self.nVar = 27  # 给定自变量数量，y=f(x1,..xn)
-        self.tInitial = 20.0  # 设定初始退火温度(initial temperature)
+        self.tInitial = 5.0  # 设定初始退火温度(initial temperature)
         self.tFinal = 1.0  # 设定终止退火温度(stop temperature)
         self.alfa = 0.98  # 设定降温参数，T(k)=alfa*T(k-1)
         self.meanMarkov = 100  # Markov链长度，也即内循环运行次数L
@@ -21,7 +27,7 @@ class OptimizeParam:
         self.func_name_subject = "func_" + algorithm_name + "_subject"  # func_OR_subject func_OS_subject func_OP_subject
         self.func_name = "func_" + algorithm_name  # func_OR func_OS func_OP
 
-        self.B_num = 9  #  参数带宽的个数     等于PMU数量
+        self.B_num = 9  # 参数带宽的个数     等于PMU数量
         self.theta_num = 9  # theta参数个数，等于PMU数量
         self.error_num = 9  # 误码率e参数个数，等于PMU数量
 
@@ -41,6 +47,8 @@ class OptimizeParam:
         self.xInitial = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-3, 1e-3,
                          1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3]  # 增大减小snr
 
+        self.param_initial(self.xInitial, self.xMin, self.xMax)
+
         # 初始化值
         # 初始化值初始化策略：第一个仿真初始化参数由自己指定
         # 之后上一轮优化得到的最佳结果作为下一个总带宽的优化初始参数 可保证结果不动荡起伏
@@ -49,3 +57,30 @@ class OptimizeParam:
         return self.cName, self.nVar, self.xMin, self.xMax, self.xInitial, self.tInitial, self.tFinal, self.alfa, self.meanMarkov, \
                self.scale, self.m, self.theta_lo, self.theta_hi, self.func_name_subject, self.func_name, \
                self.error_num, self.B_num, self.theta_num, self.BTH
+
+    # 产生问题的初值解和初值解对应的函数值
+    # 同时设定仿真参数的最小值和最大值
+    def param_initial(self, xInitial, xMin, xMax):
+        error = xInitial[18:]
+        snr = self.targetFunction.snr
+        for i in range(self.targetFunction.K):
+            error_i = error[i]
+            SNR = snr[i]
+            Bmin = self.findmin_B(error_i, SNR, 1e-8, self.targetFunction.m)
+            xMin[i] = Bmin
+            xMax[i] = Bmin + 6000
+            xInitial[i] = Bmin
+        sum = 0
+        for index in range(self.targetFunction.B_num - 1):
+            sum += xInitial[index]
+
+        xInitial[self.targetFunction.B_num - 1] = self.B_FDMA[0] - sum
+
+    def findmin_B(self, error, snr, thetamin, m):
+        Bintial = 10000
+        while True:
+            EC = self.bisection.EC_B_theta(Bintial, error, snr, thetamin, m)
+            if EC > 0:
+                break
+            Bintial += 200
+        return Bintial

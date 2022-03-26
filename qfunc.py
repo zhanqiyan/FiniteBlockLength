@@ -55,10 +55,9 @@ class Qfunction:
     def EC_function(self, B, SNR, m, decodeError, theta, T):
         w = - (theta * T * B) / math.log(2)
         v = theta * B * T * math.sqrt(1 / m) * self.Qfuncinv(decodeError) * math.log2(math.e)
-
-        EC = -(1 / (theta * T)) * math.log(
-            decodeError + (1 - decodeError) * ((math.exp(v) / SNR) * sc.hyperu(1, 2 + w, 1 / SNR)))
-        # EC = -(1 / (theta * T)) * math.log((math.exp(v) / SNR) * sc.hyperu(1, 2 + w, 1 / SNR))
+        # EC = -(1 / (theta * T)) * math.log(
+        #     decodeError + (1 - decodeError) * ((math.exp(v) / SNR) * sc.hyperu(1, 2 + w, 1 / SNR)))
+        EC = -(1 / (theta * T)) * math.log((math.exp(v) / SNR) * sc.hyperu(1, 2 + w, 1 / SNR))
         return EC
 
     # 超几何函数2F0
@@ -79,28 +78,20 @@ class Qfunction:
 
 if __name__ == '__main__':
     qf = Qfunction()
-
+    D_max = 0.01
     B = 23000
     SNR = 20
     m = 1000
-    decodeError = np.linspace(0.00001, 0.99, 100)
+    decodeError = 0.001
 
-    theta = 0.001
+    theta = np.linspace(0.0001, 0.01, 100)
     T = 0.005
-    # ec = []
-    # for e in decodeError:
-    #     ec.append(qf.EC_function(B, SNR, m, e, theta, T))
-    # ecx = ec
-    # plt.plot(decodeError, ec, 'r-o')
-    # plt.show()
-    # print(ec)
-
-    a = qf.EC_error_mtkl_function(B, SNR, m, 0.001, theta, T)
-    b = qf.EC_function(B, SNR, m, 0.001, theta, T)
-    c = qf.EC_noerror(B, SNR, theta, T)
-    d = qf.EC_error_mtkl_function1(B, SNR, m, 0.001, theta, T)
-
-    print(a)
-    print(b)
-    print(c)
-    print(d)
+    pp = []
+    for t in theta:
+        EC = qf.EC_function(B, SNR, m, decodeError, t, T)
+        p = 1 - math.exp(-t * EC * D_max)
+        pp.append(p)
+    plt.plot(theta, pp, 'r-o')
+    plt.xlabel("theta")
+    plt.ylabel(r"probability$")
+    plt.show()
