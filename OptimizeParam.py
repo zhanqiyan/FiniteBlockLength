@@ -6,7 +6,7 @@ import numpy as np
 # 设定模拟退火仿真初始参数类
 class OptimizeParam:
     def __init__(self):
-        self.B_FDMA = np.arange(157000, 199000, 4000)  # 修改程序 更改snr位置 增大snr 增大减小snr
+        self.B_FDMA = np.arange(156000, 244000, 4000)
         self.targetFunction = TargetFunction()
         self.bisection = Bisection()
 
@@ -21,7 +21,7 @@ class OptimizeParam:
 
         self.m = 1000  # 块传输符号个数
         self.theta_lo = 1e-8
-        self.theta_hi = 0.1
+        self.theta_hi = 0.25
 
         self.func_name_subject = "func_" + algorithm_name + "_subject"  # func_OR_subject func_OS_subject func_OP_subject
         self.func_name = "func_" + algorithm_name  # func_OR func_OS func_OP
@@ -37,8 +37,8 @@ class OptimizeParam:
         # e1,e2,e3,e4,e5,e6,e7,e8,e9
         # B、theta、e的索引对应着PMU索引
 
-        self.xMax = [30000, 30000, 30000, 30000, 30000, 30000, 30000, 30000, 31000, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15,
-                     0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15]
+        self.xMax = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25,
+                     0.25, 0.25, 0.25, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
 
         self.xMin = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7,
                      1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7]  # 增大减小snr
@@ -46,7 +46,7 @@ class OptimizeParam:
         self.xInitial = [0, 0, 0, 0, 0, 0, 0, 0, 0, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-3, 1e-3,
                          1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3]  # 增大减小snr
 
-        self.param_initial(self.xInitial, self.xMin, self.xMax)
+        self.param_initial(self.xInitial, self.xMin, self.xMax, 0)
 
         # 初始化值
         # 初始化值初始化策略：第一个仿真初始化参数由自己指定
@@ -59,7 +59,7 @@ class OptimizeParam:
 
     # 产生问题的初值解和初值解对应的函数值
     # 同时设定仿真参数的最小值和最大值
-    def param_initial(self, xInitial, xMin, xMax):
+    def param_initial(self, xInitial, xMin, xMax, i):
         error = xInitial[18:]
         snr = self.targetFunction.snr
         for i in range(self.targetFunction.K):
@@ -73,7 +73,7 @@ class OptimizeParam:
         for index in range(self.targetFunction.B_num - 1):
             sum += xInitial[index]
 
-        xInitial[self.targetFunction.B_num - 1] = self.B_FDMA[0] - sum
+        xInitial[self.targetFunction.B_num - 1] = self.B_FDMA[i] - sum
 
     def findmin_B(self, error, snr, thetamin, m):
         Bintial = 10000

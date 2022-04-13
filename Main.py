@@ -29,7 +29,7 @@ class Main:
         for index in range(len(BTH)):
             # 设置总带宽
             optimizer.getTargetFunction().setBtotal(BTH[index])
-            optimizeParam.param_initial(xInitial, xMin, xMax)
+            # optimizeParam.param_initial(xInitial, xMin, xMax, index)
             # 模拟退火算法
             [xBest, fxBest] = optimizer.OptimizationSSA(nVar, xMin, xMax, xInitial, tInitial, tFinal, alfa, meanMarkov,
                                                         scale, m, theta_lo, theta_hi, func_name_subject, func_name,

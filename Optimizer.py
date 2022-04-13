@@ -122,6 +122,13 @@ class Optimizer:
     # 产生问题的初值解和初值解对应的函数值
     # 同时设定仿真参数的最小值和最大值
     def param_initial(self, xMin, xMax, xInitial, m, func_name_subject):
+
+        B_avg = self.targetFunction.Btotal / self.targetFunction.B_num
+
+        for index in range(self.targetFunction.K):
+            xMin[index] = B_avg - 6 * 1000 if xMin[index] < B_avg - 6 * 1000 else xMin[index]
+            xMax[index] = B_avg + 6 * 1000
+
         sum = 0
         for index in range(self.targetFunction.B_num - 1):
             sum += xInitial[index]
@@ -214,7 +221,7 @@ class Optimizer:
                 break
 
         error_initial = 0.0001
-        error_MAx = 0.2
+        error_MAX = 0.2
         error_max = error_initial
         X_error = np.zeros(nVar)
         X_error[:] = xNew[:]
@@ -227,55 +234,11 @@ class Optimizer:
         # SNR = self.targetFunction.snr[v]
         # error = X_error[18 + v]
 
-        while error_initial < error_MAx:
+        while error_initial < error_MAX:
             X_error[18 + v] = error_initial
             func = self.targetFunction.func_target_subject(func_name_subject, X_error, 0)
             if func > func_max:
                 func_max = func
-                error_max = error_initial
-            error_initial += 0.01
-        xNew[18 + v] = error_max
-        return xNew
-
-    # 随机扰动B产生新解
-    # 随机扰动B,然后根据B和theta,根据单调性找到error
-    def generate_xNew_by_B(self, nVar, xNow, xMax, xMin, scale, m):
-        xNew = np.zeros((nVar))  # 新解
-        xNew[:] = xNow[:]
-
-        # 参数 B1,B2,B3,B4,B5,B6,B7,B8,B9由随机产生
-        # 为保证满足所有带宽之和等于Btotal，B1,B2,B3,B4,B5,B6,B7,B8由随机扰动方式产生，B9 = Btotal-其余八个带宽之和
-        v = random.randint(0, 7)  # 产生 [0,random_var_num-1]即[0,7]之间的随机数
-
-        while True:
-            # 1 随机产生B
-            flag = False
-            while True:
-                # random.normalvariate(0, 1)：产生服从均值为0、标准差为 1 的正态分布随机实数
-                xNew[v] = xNow[v] + scale * (xMax[v] - xMin[v]) * random.normalvariate(0, 1)
-                xNew[v] = max(min(xNew[v], xMax[v]), xMin[v])  # 保证新解在 [min,max] 范围内
-                sum = 0
-                for index in range(self.targetFunction.B_num - 1):
-                    sum += xNew[index]
-                xNew[self.targetFunction.B_num - 1] = self.targetFunction.Btotal - sum
-                if xNew[self.targetFunction.B_num - 1] >= xMin[self.targetFunction.B_num - 1]:
-                    flag = True
-                    break
-            if flag:
-                break
-
-        error_initial = 0.0001
-        error_max = error_initial
-        EC_max = 0
-        error_MAx = 0.2
-        B = xNow[v]
-        theta = xNow[9 + v]
-        SNR = self.targetFunction.snr[v]
-
-        while error_initial < error_MAx:
-            EC = self.qfunction.EC_function(B, SNR, m, error_initial, theta, self.targetFunction.T)
-            if EC > EC_max:
-                EC_max = EC
                 error_max = error_initial
             error_initial += 0.0001
         xNew[18 + v] = error_max
