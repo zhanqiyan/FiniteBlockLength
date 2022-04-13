@@ -1,13 +1,12 @@
 from TargetFunction import TargetFunction
 from Bisection import Bisection
+import numpy as np
 
 
 # 设定模拟退火仿真初始参数类
 class OptimizeParam:
     def __init__(self):
-        self.B_FDMA = [157000, 159000, 161000, 163000, 165000, 167000, 169000, 171000, 173000, 175000, 177000,
-                       179000, 181000, 183000, 185000, 187000, 189000, 191000, 193000, 195000, 197000,
-                       199000]  # 修改程序 更改snr位置 增大snr 增大减小snr
+        self.B_FDMA = np.arange(157000, 199000, 4000)  # 修改程序 更改snr位置 增大snr 增大减小snr
         self.targetFunction = TargetFunction()
         self.bisection = Bisection()
 
@@ -68,7 +67,7 @@ class OptimizeParam:
             SNR = snr[i]
             Bmin = self.findmin_B(error_i, SNR, 1e-8, self.targetFunction.m)
             xMin[i] = Bmin
-            xMax[i] = Bmin + 6000
+            xMax[i] = Bmin + 8000
             xInitial[i] = Bmin
         sum = 0
         for index in range(self.targetFunction.B_num - 1):

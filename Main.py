@@ -10,7 +10,7 @@ class Main:
     def __init__(self):
         self.targetFunction = TargetFunction()
 
-    def main(self, algorithm_name):
+    def main(self, algorithm_name, model):
         optimizer = Optimizer()
         optimizeParam = OptimizeParam()
         xBest_List = []
@@ -29,9 +29,11 @@ class Main:
         for index in range(len(BTH)):
             # 设置总带宽
             optimizer.getTargetFunction().setBtotal(BTH[index])
+            optimizeParam.param_initial(xInitial, xMin, xMax)
             # 模拟退火算法
             [xBest, fxBest] = optimizer.OptimizationSSA(nVar, xMin, xMax, xInitial, tInitial, tFinal, alfa, meanMarkov,
-                                                        scale, m, theta_lo, theta_hi, func_name_subject, func_name)
+                                                        scale, m, theta_lo, theta_hi, func_name_subject, func_name,
+                                                        model)
             xBest_List.append(xBest.tolist())
             fxBest_List.append(fxBest)
 
@@ -43,8 +45,7 @@ class Main:
             optimizeParam.xInitial[:] = xBest[:]  # 将本轮优化结果作为下轮优化的初始参数
 
         # 将结果保存为txt文件
-        # self.saveTxt("result/xBest_List_{}_{}_{}".format(user_pair_algorithm, algorithm_name, other), xBest_List)
-        # self.saveTxt("result/fxBest_List_{}_{}_{}".format(user_pair_algorithm, algorithm_name, other), fxBest_List)
+        self.saveTxt("result/xBest_List_{}".format(algorithm_name), xBest_List)
         self.saveTxt("result/fBest_List_{}".format(algorithm_name), fBest_List)
 
     # 将数组保存为txt文件
@@ -60,4 +61,4 @@ class Main:
 if __name__ == '__main__':
     main = Main()
     print("OR")
-    main.main("OR")  # OR OS OP三种算法  三种用户配对算法
+    main.main("OR", "model")  # OR OS OP三种算法  三种用户配对算法

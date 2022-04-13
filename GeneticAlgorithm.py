@@ -39,67 +39,34 @@ class GeneticAlgorithm:
         return pop
 
     # 计算适应度和
-    def sum(self, population):
+    def sum(self, pop):
         total = 0
-        for i in range(len(population.indivduals)):
-            total += population.indivduals[i].fitness
+        for i in range(len(pop.indivduals)):
+            total += pop.indivduals[i].fitness
         return total
 
-    # # np.random.choice
-    # # 3.对种群的的个体进行自然选择 返回被选择后的种群
-    # def selection(self, population):
-    #     # 将所有的适应度求和
-    #     total_fitness = self.sum(population)
-    #     # 计算个体被选择概率
-    #     for i in range(len(population.indivduals)):
-    #         population.indivduals[i].select_pr = population.indivduals[i].fitness / total_fitness
-    #
-    #     # 将所有个体的适应度正则化
-    #     self.cumsum(new_fitness)
-    #     #
-    #     ms = []
-    #     # 存活的种群
-    #     population_length = pop_len = len(population)
-    #     # 求出种群长度
-    #     # 根据随机数确定哪几个能存活
-    #
-    #     for i in range(pop_len):
-    #         ms.append(random.random())
-    #     # 产生种群个数的随机值
-    #     # ms.sort()
-    #     # 存活的种群排序
-    #     fitin = 0
-    #     newin = 0
-    #     new_population = new_pop = population
-    #
-    #     # 轮盘赌方式
-    #     while newin < pop_len:
-    #         if (ms[newin] < new_fitness[fitin]):
-    #             new_pop[newin] = population[fitin]
-    #             newin += 1
-    #         else:
-    #             fitin += 1
-    #     return new_pop
+    # np.random.choice
+    # 3.对种群的的个体进行自然选择 返回被选择后的种群
+    def selection(self, pop):
+        # 将所有的适应度求和
+        total_fitness = self.sum(pop)
+        pr=[]
+        # 计算个体被选择概率
+        for i in range(len(pop.indivduals)):
+            pop.indivduals[i].select_pr = pop.indivduals[i].fitness / total_fitness
+            pr.append(pop.indivduals[i].fitness / total_fitness)
+        index = np.random.choice(a = np.arange(len(pop.indivduals)), size = self.population_size, replace = False, p = pr)
+
+        new_pop = population()
+        for i in range(len(index)):
+            new_pop.indivduals.append(pop.indivduals[i])
+        return index
+
 
     # 遗传算法入口
     def GA(self):
 
         return 0
-
-    # 计算适应度斐伯纳且列表
-    def cumsum(self, fitness1):
-        for i in range(len(fitness1) - 2, -1, -1):
-            # range(start,stop,[step])
-            # 倒计数
-            total = 0
-            j = 0
-
-            while (j <= i):
-                total += fitness1[j]
-                j += 1
-
-            fitness1[i] = total
-            fitness1[len(fitness1) - 1] = 1
 
     # 4.交叉操作
     def crossover(self, population):
@@ -143,16 +110,16 @@ class GeneticAlgorithm:
                 else:
                     population[i][mpoint] = 1
 
-    # transform the binary to decimalism
-    # 将每一个染色体都转化成十进制 max_value,再筛去过大的值
-    def b2d(self, best_individual):
-        total = 0
-        b = len(best_individual)
-        for i in range(b):
-            total = total + best_individual[i] * math.pow(2, i)
-
-        total = total * self.max_value / (math.pow(2, self.choromosome_length) - 1)
-        return total
+    # # transform the binary to decimalism
+    # # 将每一个染色体都转化成十进制 max_value,再筛去过大的值
+    # def b2d(self, best_individual):
+    #     total = 0
+    #     b = len(best_individual)
+    #     for i in range(b):
+    #         total = total + best_individual[i] * math.pow(2, i)
+    #
+    #     total = total * self.max_value / (math.pow(2, self.choromosome_length) - 1)
+    #     return total
 
     # 寻找最好的适应度和个体
 
@@ -194,23 +161,20 @@ class GeneticAlgorithm:
     #     results = results[1:]
     #     results.sort()
 
-    def select(self, pop, fitness):
-        POP_SIZE = len(pop)
-        idx = np.random.choice(np.arange(POP_SIZE), size=POP_SIZE, replace=True, p=fitness / sum(fitness))
-        # 我们只要按照适应程度 fitness 来选 pop 中的 parent 就好. fitness 越大, 越有可能被选到.
-        return pop[idx]
+    # def select(self, pop, fitness):
+    #     POP_SIZE = len(pop)
+    #     idx = np.random.choice(np.arange(POP_SIZE), size=POP_SIZE, replace=True, p=fitness / sum(fitness))
+    #     # 我们只要按照适应程度 fitness 来选 pop 中的 parent 就好. fitness 越大, 越有可能被选到.
+    #     return pop[idx]
 
 
 if __name__ == '__main__':
-    GA = GeneticAlgorithm(5, 27, 0.6, 0.6)
+    GA = GeneticAlgorithm(10, 27, 0.6, 0.6)
     GA.targetFunction.setBtotal(160000)
     pop = GA.initPopulation("func_OR_subject")
     total = GA.sum(pop)
-    print(total)
+    GA.population_size = 3
 
-    a = [2, 3, 4, 5]
-    b = [5, 6, 7, 8]
+    new_pop = GA.selection(pop)
+    print(new_pop)
 
-
-    pp = GA.select(a,b)
-    print(pp)

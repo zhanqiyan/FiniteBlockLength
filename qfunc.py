@@ -78,20 +78,23 @@ class Qfunction:
 
 if __name__ == '__main__':
     qf = Qfunction()
-    D_max = 0.01
-    B = 23000
-    SNR = 20
-    m = 1000
-    decodeError = 0.001
+    # D_max = 0.01
+    # B = 23000
+    # SNR = 20
+    # m = 1000
+    # decodeError = 0.001
+    #
+    # theta = np.linspace(0.0001, 0.01, 100)
+    # T = 0.005
+    # pp = []
+    # for t in theta:
+    #     EC = qf.EC_function(B, SNR, m, decodeError, t, T)
+    #     p = 1 - math.exp(-t * EC * D_max)
+    #     pp.append(p)
+    # plt.plot(theta, pp, 'r-o')
+    # plt.xlabel("theta")
+    # plt.ylabel(r"probability")
+    # plt.show()
 
-    theta = np.linspace(0.0001, 0.01, 100)
-    T = 0.005
-    pp = []
-    for t in theta:
-        EC = qf.EC_function(B, SNR, m, decodeError, t, T)
-        p = 1 - math.exp(-t * EC * D_max)
-        pp.append(p)
-    plt.plot(theta, pp, 'r-o')
-    plt.xlabel("theta")
-    plt.ylabel(r"probability$")
-    plt.show()
+
+    print(qf.Qfuncinv(1))

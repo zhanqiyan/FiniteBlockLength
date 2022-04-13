@@ -20,7 +20,21 @@ class Optimizer:
 
     # 模拟退火算法
     def OptimizationSSA(self, nVar, xMin, xMax, xInitial, tInitial, tFinal, alfa, meanMarkov, scale,
-                        m, theta_lo, theta_hi, func_name_subject, func_name):
+                        m, theta_lo, theta_hi, func_name_subject, func_name, model):
+
+        if model == "equal_bandwidth_error":
+            X = np.zeros((nVar))
+            B_9 = self.targetFunction.Btotal / 9
+            for i in range(self.targetFunction.B_num):
+                X[i] = B_9
+            X[9:18] = [1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7]
+            X[18:] = [1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3]
+
+            theta = self.bisection_theta(X, theta_lo, theta_hi, m)
+            X[9:18] = theta[:]
+            fxNew = self.targetFunction.func_target_subject(func_name_subject, X, 0)
+            return X, fxNew
+
         # 得到初始解和初始函数值
         xMin, xMax, xInitial, fxInitial, = self.param_initial(xMin, xMax, xInitial, m, func_name_subject)
 
@@ -87,7 +101,7 @@ class Optimizer:
                         xBest[:] = xNew[:]
                         totalImprove += 1
                         # scale = scale * 0.99  # 可变搜索步长，逐步减小搜索范围，提高搜索精度
-                # print("总运行次数：", totalMar, "运行中间最佳目标结果fxBest：", fxBest)
+                print("总运行次数：", totalMar, "运行中间最佳目标结果fxBest：", fxBest)
 
             ##===========================温度更新函数========================================================##
             # 缓慢降温至新的温度，降温曲线：T(k)=alfa*T(k-1)
@@ -265,4 +279,19 @@ class Optimizer:
                 error_max = error_initial
             error_initial += 0.0001
         xNew[18 + v] = error_max
+        return xNew
+
+    def bisection_theta(self, xNew, theta_lo, theta_hi, m):
+        ##================================使用二分法得到theta=================================================##
+        # theta1,theta2,theta3,theta4,theta5,theta6,theta7,theta8,theta9
+        # 对于得到新解中的alpha和B作为已知参数，使用二分法去求解theta
+        B = xNew[0:9]
+        error = xNew[18:]
+        snr = self.targetFunction.snr
+        for i in range(self.targetFunction.K):
+            B_i = B[i]
+            SNR = snr[i]
+            error_i = error[i]
+            theta_single = self.bisection.calculate_theta_by_bisection(B_i, error_i, SNR, m, theta_lo, theta_hi)
+            xNew[self.targetFunction.B_num + i] = theta_single
         return xNew
