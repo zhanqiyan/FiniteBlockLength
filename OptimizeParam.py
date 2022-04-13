@@ -73,7 +73,7 @@ class OptimizeParam:
         for index in range(self.targetFunction.B_num - 1):
             sum += xInitial[index]
 
-        xInitial[self.targetFunction.B_num - 1] = self.B_FDMA[i] - sum
+        xInitial[self.targetFunction.B_num - 1] = self.B_FDMA[0] - sum
 
     def findmin_B(self, error, snr, thetamin, m):
         Bintial = 10000

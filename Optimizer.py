@@ -28,10 +28,14 @@ class Optimizer:
             for i in range(self.targetFunction.B_num):
                 X[i] = B_9
             X[9:18] = [1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7]
-            X[18:] = [1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3]
+            X[18:] = [1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2]
 
-            theta = self.bisection_theta(X, theta_lo, theta_hi, m)
-            X[9:18] = theta[:]
+            flag = self.checkSolution(X, m)
+            if not flag:
+                return X, -100
+
+            Xtheta = self.bisection_theta(X, theta_lo, theta_hi, m)
+            X[9:18] = Xtheta[9:18]
             fxNew = self.targetFunction.func_target_subject(func_name_subject, X, 0)
             return X, fxNew
 
@@ -258,3 +262,22 @@ class Optimizer:
             theta_single = self.bisection.calculate_theta_by_bisection(B_i, error_i, SNR, m, theta_lo, theta_hi)
             xNew[self.targetFunction.B_num + i] = theta_single
         return xNew
+
+    def checkSolution(self, xNew, m):
+        ##=======================判断新解是否有效==================================================##
+        # theta1,theta2,theta3,theta4,theta5,theta6,theta7,theta8,theta9
+        # 对于得到新解中的alpha和B作为已知参数，为了使用二分法去求解theta，判断theta取值极小时EC是否大于等于Rth
+        flag = True
+        snr = self.targetFunction.snr
+        B = xNew[0:9]
+        error = xNew[18:]
+        flag = True
+        for i in range(9):
+            B_i = B[i]
+            SNR = snr[i]
+            error_i = error[i]
+            single_func = self.bisection.EC_B_theta(B_i, error_i, SNR, self.theta_min, m)
+            if single_func < 0:
+                flag = False
+                break
+        return flag
