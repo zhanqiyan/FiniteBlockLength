@@ -145,7 +145,8 @@ class TargetFunction:
             theta_i = theta[i]
             error_i = error[i]
             SNR = self.snr[i]
-            EC = self.qfunction.EC_function(B_i, SNR, self.m, error_i, theta_i, self.T)
+            m = 2 * self.Dmax * B_i
+            EC = self.qfunction.EC_function(B_i, SNR, m, error_i, theta_i, self.T)
             pr_single = 1 - math.exp(-theta_i * EC * self.Dmax)
             pr[i] = pr_single
         return pr
@@ -224,7 +225,8 @@ class TargetFunction:
             theta_i = theta[i]
             error_i = error[i]
             SNR = self.snr[i]
-            EC = self.qfunction.EC_function(B_i, SNR, self.m, error_i, theta_i, self.T) - self.Rth
+            m = 2 * self.Dmax * B_i
+            EC = self.qfunction.EC_function(B_i, SNR, m, error_i, theta_i, self.T) - self.Rth
             sum_EC += math.pow(max(-EC, 0), 2)
         return sum_EC
 

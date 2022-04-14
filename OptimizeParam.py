@@ -6,7 +6,7 @@ import numpy as np
 # 设定模拟退火仿真初始参数类
 class OptimizeParam:
     def __init__(self):
-        self.B_FDMA = np.arange(156000, 244000, 4000)
+        self.B_FDMA = np.arange(160000, 244000, 4000)
         self.targetFunction = TargetFunction()
         self.bisection = Bisection()
 
@@ -78,6 +78,7 @@ class OptimizeParam:
     def findmin_B(self, error, snr, thetamin, m):
         Bintial = 10000
         while True:
+            m = 2 * self.targetFunction.Dmax * Bintial
             EC = self.bisection.EC_B_theta(Bintial, error, snr, thetamin, m)
             if EC > 0:
                 break

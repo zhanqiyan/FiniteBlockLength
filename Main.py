@@ -45,8 +45,8 @@ class Main:
             optimizeParam.xInitial[:] = xBest[:]  # 将本轮优化结果作为下轮优化的初始参数
 
         # 将结果保存为txt文件
-        self.saveTxt("result/xBest_List_{}".format(algorithm_name), xBest_List)
-        self.saveTxt("result/fBest_List_{}".format(algorithm_name), fBest_List)
+        self.saveTxt("result/xBest_List_{}_{}".format(algorithm_name, model), xBest_List)
+        self.saveTxt("result/fBest_List_{}_{}".format(algorithm_name, model), fBest_List)
 
     # 将数组保存为txt文件
     def saveTxt(self, path, np_list):
@@ -61,4 +61,5 @@ class Main:
 if __name__ == '__main__':
     main = Main()
     print("OR")
-    main.main("OR", "equal_bandwidth_error")  # OR OS OP三种算法  三种用户配对算法
+    # main.main("OP", "equal_bandwidth_error")  # OR OS OP三种算法  三种用户配对算法
+    main.main("OR", "OMA")  # OR OS OP三种算法  三种用户配对算法

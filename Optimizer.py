@@ -160,6 +160,7 @@ class Optimizer:
             B_i = B[i]
             SNR = snr[i]
             error_i = error[i]
+            m = 2 * self.targetFunction.Dmax * B_i
             theta_single = self.bisection.calculate_theta_by_bisection(B_i, error_i, SNR, m, theta_lo, theta_hi)
             xNew[self.targetFunction.B_num + i] = theta_single
         # print("====================二分法产生一个新解xNew:", xNew, "=======================")
@@ -187,6 +188,7 @@ class Optimizer:
                 B_i = B[i]
                 SNR = snr[i]
                 error_i = error[i]
+                m = 2 * self.targetFunction.Dmax * B_i
                 single_func = self.bisection.EC_B_theta(B_i, error_i, SNR, self.theta_min, m)
                 if single_func < 0:
                     flag = False
@@ -229,18 +231,25 @@ class Optimizer:
         error_max = error_initial
         X_error = np.zeros(nVar)
         X_error[:] = xNew[:]
-        func_max = self.targetFunction.func_target_subject(func_name_subject, X_error, 0)
+        # func_max = self.targetFunction.func_target_subject(func_name_subject, X_error, 0)
 
         # X_last = np.zeros(nVar)
         # X_last[:] = X_error[:]
-        # B = X_error[v]
-        # theta = X_error[9 + v]
-        # SNR = self.targetFunction.snr[v]
+        B = X_error[v]
+        theta = X_error[9 + v]
+        SNR = self.targetFunction.snr[v]
         # error = X_error[18 + v]
+
+        m = 2 * self.targetFunction.Dmax * B
+        EC = self.qfunction.EC_function(B, SNR, m, error_initial, theta, self.targetFunction.T)
+        func_max = (1 - math.exp(-theta * EC * self.targetFunction.Dmax))*(1-error_initial)
 
         while error_initial < error_MAX:
             X_error[18 + v] = error_initial
-            func = self.targetFunction.func_target_subject(func_name_subject, X_error, 0)
+            # func = self.targetFunction.func_target_subject(func_name_subject, X_error, 0)
+            m = 2 * self.targetFunction.Dmax * B
+            EC = self.qfunction.EC_function(B, SNR, m, error_initial, theta, self.targetFunction.T)
+            func = (1 - math.exp(-theta * EC * self.targetFunction.Dmax))*(1-error_initial)
             if func > func_max:
                 func_max = func
                 error_max = error_initial
@@ -259,6 +268,7 @@ class Optimizer:
             B_i = B[i]
             SNR = snr[i]
             error_i = error[i]
+            m = 2 * self.targetFunction.Dmax * B_i
             theta_single = self.bisection.calculate_theta_by_bisection(B_i, error_i, SNR, m, theta_lo, theta_hi)
             xNew[self.targetFunction.B_num + i] = theta_single
         return xNew
@@ -276,6 +286,7 @@ class Optimizer:
             B_i = B[i]
             SNR = snr[i]
             error_i = error[i]
+            m = 2 * self.targetFunction.Dmax * B_i
             single_func = self.bisection.EC_B_theta(B_i, error_i, SNR, self.theta_min, m)
             if single_func < 0:
                 flag = False
