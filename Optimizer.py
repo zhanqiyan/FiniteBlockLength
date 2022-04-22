@@ -125,7 +125,7 @@ class Optimizer:
                         xBest[:] = xNew[:]
                         totalImprove += 1
                         # scale = scale * 0.99  # 可变搜索步长，逐步减小搜索范围，提高搜索精度
-                # print("总运行次数：", totalMar, "运行中间最佳目标结果fxBest：", fxBest, "xBest:", xBest)
+                print("总运行次数：", totalMar, "运行中间最佳目标结果fxBest：", fxBest, "xBest:", xBest)
 
             ##===========================温度更新函数========================================================##
             # 缓慢降温至新的温度，降温曲线：T(k)=alfa*T(k-1)
@@ -172,27 +172,6 @@ class Optimizer:
     def state_generate_fuc(self, nVar, xNow, xMax, xMin, scale, theta_lo, theta_hi, func_name_subject):
         ##================================产生新解XNew=================================================##
         xNew = self.generate_xNew_by_B_noarq(nVar, xNow, xMax, xMin, scale, func_name_subject)
-
-        ##================================得到epsilon================================================##
-        B = xNew[0:9]
-        theta = xNew[9:18]
-        D_t = xNew[27:]
-        R_th = 60000
-        D_max = 0.01
-        T = 0.005
-        snr = self.targetFunction.snr
-        error = []
-        for i in range(self.targetFunction.K):
-            B_i = B[i]
-            theta_i = theta[i]
-            D_t_i = D_t[i]
-            SNR = snr[i]
-            ec_infinity = self.qfunction.EC_function_infinity(B_i, SNR, theta_i, T)
-            qx = math.sqrt(D_t_i / B_i) * (ec_infinity - R_th) * math.log(2)
-            epsilon_i = self.qfunction.Qfunc(qx)
-            error.append(epsilon_i)
-        # print("====================二分法产生一个新解xNew:", xNew, "=======================")
-        xNew[18:27] = error[:]
         return xNew
 
     # 随机扰动B产生新解
@@ -218,6 +197,27 @@ class Optimizer:
         theta, D_t = self.generate_D_theta_by_B(nVar, xNew, 1e-8, 0.4)
         xNew[9:18] = theta[:]
         xNew[27:] = D_t[:]
+
+        ##================================得到epsilon================================================##
+        B = xNew[0:9]
+        theta = xNew[9:18]
+        D_t = xNew[27:]
+        R_th = 60000
+        D_max = 0.01
+        T = 0.005
+        snr = self.targetFunction.snr
+        error = []
+        for i in range(self.targetFunction.K):
+            B_i = B[i]
+            theta_i = theta[i]
+            D_t_i = D_t[i]
+            SNR = snr[i]
+            ec_infinity = self.qfunction.EC_function_infinity(B_i, SNR, theta_i, T)
+            qx = math.sqrt(D_t_i / B_i) * (ec_infinity - R_th) * math.log(2)
+            epsilon_i = self.qfunction.Qfunc(qx)
+            error.append(epsilon_i)
+        # print("====================二分法产生一个新解xNew:", xNew, "=======================")
+        xNew[18:27] = error[:]
         return xNew
 
     def generate_D_theta_by_B(self, nVar, xNow, theta_lo, theta_hi):
@@ -233,33 +233,37 @@ class Optimizer:
             B_i = B[i]
             theta_bar_i = theta_bar[i]
             snr_i = self.targetFunction.snr[i]
+            theta_opt_max = theta_opt
+            D_t_opt_max = D_t_opt
+            f_max = self.f_function(theta_opt_max, D_t_opt_max, B_i, snr_i)
             while True:
                 theta_opt = self.find_theta_opitimal(D_t_opt, B_i, snr_i, theta_bar_i)
                 f1 = self.f_function(theta_opt, D_t_opt, B_i, snr_i)
 
+                if f1 > f_max:
+                    theta_opt_max = theta_opt
+                    f_max = f1
+
                 D_t_opt = self.find_D_t_opitimal(theta_opt, B_i, snr_i)
                 f2 = self.f_function(theta_opt, D_t_opt, B_i, snr_i)
 
-                if math.fabs(f1 - f2) < 0.0001:
+                if f2 > f_max:
+                    D_t_opt_max = D_t_opt
+                    f_max = f2
+
+                if math.fabs(f_max - f2) < 0.00001 and math.fabs(f_max - f1) < 0.00001:
                     break
             D_t.append(D_t_opt)
             theta.append(theta_opt)
         return theta, D_t
 
     def find_theta_opitimal(self, D_t, B, SNR, theta_bar):
-        # theta_init = 0.000001
-        # theta_max = theta_init
-        # while theta_init < theta_bar:
-        #     if self.f_function(theta_init, D_t, B, SNR) > self.f_function(theta_max, D_t, B, SNR):
-        #         theta_max = theta_init
-        #     theta_init = theta_init + 0.0001
-        # return theta_max
         zu = theta_bar  # alpha_up
         zl = 0.000001  # alpha_low
         d = ((math.sqrt(5) - 1) / 2) * (zu - zl)
         z = [0, zl + d, zu - d]
         f = [0, 0, 0]
-        while math.fabs(zu - zl) > 0.001:
+        while math.fabs(zu - zl) > 0.00001:
             v = 1
             while v <= 2:
                 theta_v = z[v]
@@ -281,20 +285,12 @@ class Optimizer:
         return theta_max
 
     def find_D_t_opitimal(self, theta, B, SNR):
-        # D_init = 0.0001
-        # D_max = D_init
-        # while D_init < 0.005:
-        #     if self.f_function(theta, D_init, B, SNR) > self.f_function(theta, D_max, B, SNR):
-        #         D_max = D_init
-        #     D_init = D_init + 0.0001
-        #     return D_max
-
         zu = 0.005  # alpha_up
         zl = 0.0001  # alpha_low
         d = ((math.sqrt(5) - 1) / 2) * (zu - zl)
         z = [0, zl + d, zu - d]
         f = [0, 0, 0]
-        while math.fabs(zu - zl) > 0.001:
+        while math.fabs(zu - zl) > 0.00001:
             v = 1
             while v <= 2:
                 D_t_v = z[v]
@@ -335,22 +331,6 @@ class Optimizer:
             theta_bar.append(theta)
         return theta_bar
 
-    def bisection_theta(self, xNew, theta_lo, theta_hi, m):
-        ##================================使用二分法得到theta=================================================##
-        # theta1,theta2,theta3,theta4,theta5,theta6,theta7,theta8,theta9
-        # 对于得到新解中的alpha和B作为已知参数，使用二分法去求解theta
-        B = xNew[0:9]
-        error = xNew[18:]
-        snr = self.targetFunction.snr
-        for i in range(self.targetFunction.K):
-            B_i = B[i]
-            SNR = snr[i]
-            error_i = error[i]
-            m = 2 * self.targetFunction.Dmax * B_i
-            theta_single = self.bisection.calculate_theta_by_bisection(B_i, error_i, SNR, m, theta_lo, theta_hi)
-            xNew[self.targetFunction.B_num + i] = theta_single
-        return xNew
-
     def checkSolution(self, xNew):
         ##=======================判断新解是否有效==================================================##
         # theta1,theta2,theta3,theta4,theta5,theta6,theta7,theta8,theta9
@@ -367,3 +347,123 @@ class Optimizer:
                 flag = False
                 break
         return flag
+
+    # def bisection_theta(self, xNew, theta_lo, theta_hi):
+    #     ##================================使用二分法得到theta=================================================##
+    #     # theta1,theta2,theta3,theta4,theta5,theta6,theta7,theta8,theta9
+    #     # 对于得到新解中的alpha和B作为已知参数，使用二分法去求解theta
+    #     B = xNew[0:9]
+    #     error = xNew[18:27]
+    #     D_t = xNew[27:36]
+    #     snr = self.targetFunction.snr
+    #     for i in range(self.targetFunction.K):
+    #         B_i = B[i]
+    #         SNR = snr[i]
+    #         error_i = error[i]
+    #         m = D_t[i] * B_i
+    #         theta_single = self.bisection.calculate_theta_by_bisection(B_i, error_i, SNR, m, theta_lo, theta_hi)
+    #         xNew[self.targetFunction.B_num + i] = theta_single
+    #     return xNew[9:18]
+
+    #
+    # def generate_D_theta_by_B_epsilon(self, nVar, xNow, theta_lo, theta_hi):
+    #     xNew = np.zeros((nVar))  # 新解
+    #     xNew[:] = xNow[:]
+    #     B = xNew[0:9]
+    #     theta = np.zeros((9))
+    #     theta[:] = xNew[9:18]
+    #     D_t = []
+    #     epsilon = []
+    #     for i in range(9):
+    #         D_t_opt = 0.001
+    #         epsilon_opt = 0.0001
+    #         B_i = B[i]
+    #         snr_i = self.targetFunction.snr[i]
+    #         while True:
+    #             epsilon_opt = self.find_epsilon_opitimal(D_t_opt, B_i, snr_i, theta[i])
+    #             f1 = self.f_function1(theta[i], D_t_opt, epsilon_opt, B_i, snr_i)
+    #
+    #             B_i = B[i]
+    #             m = D_t_opt * B_i
+    #             theta_single = self.bisection.calculate_theta_by_bisection(B_i, epsilon_opt, snr_i, m, theta_lo,
+    #                                                                        theta_hi)
+    #             theta[i] = theta_single
+    #
+    #             D_t_opt = self.find_D_t_opitimal1(theta[i], B_i, snr_i, epsilon_opt)
+    #             f2 = self.f_function1(theta[i], D_t_opt, epsilon_opt, B_i, snr_i)
+    #             B_i = B[i]
+    #             m = D_t_opt * B_i
+    #             theta_single = self.bisection.calculate_theta_by_bisection(B_i, epsilon_opt, snr_i, m, theta_lo,
+    #                                                                        theta_hi)
+    #             theta[i] = theta_single
+    #
+    #             if math.fabs(f1 - f2) < 0.0001:
+    #                 break
+    #         D_t.append(D_t_opt)
+    #         epsilon.append(epsilon_opt)
+    #     return D_t, epsilon, theta
+    #
+    # def find_epsilon_opitimal(self, D_t, B, SNR, theta):
+    #
+    #     zu = 0.2  # alpha_up
+    #     zl = 0.000001  # alpha_low
+    #     d = ((math.sqrt(5) - 1) / 2) * (zu - zl)
+    #     z = [0, zl + d, zu - d]
+    #     f = [0, 0, 0]
+    #     while math.fabs(zu - zl) > 0.001:
+    #         v = 1
+    #         while v <= 2:
+    #             epsilon_v = z[v]
+    #             f[v] = self.f_function1(theta, D_t, epsilon_v, B, SNR)
+    #             v = v + 1
+    #         if math.fabs(f[1] - f[2]) < 0.00001:
+    #             break
+    #         elif f[1] < f[2]:
+    #             zu = z[1]
+    #             d = ((math.sqrt(5) - 1) / 2) * (zu - zl)
+    #             z[1] = z[2]
+    #             z[2] = zu - d
+    #         elif f[1] > f[2]:
+    #             zl = z[2]
+    #             d = ((math.sqrt(5) - 1) / 2) * (zu - zl)
+    #             z[2] = z[1]
+    #             z[1] = zl + d
+    #     epsilon_max = (zu + zl) / 2
+    #     return epsilon_max
+    #
+    # def find_D_t_opitimal1(self, theta, B, SNR, epsilon):
+    #
+    #     zu = 0.005  # alpha_up
+    #     zl = 0.0001  # alpha_low
+    #     d = ((math.sqrt(5) - 1) / 2) * (zu - zl)
+    #     z = [0, zl + d, zu - d]
+    #     f = [0, 0, 0]
+    #     while math.fabs(zu - zl) > 0.001:
+    #         v = 1
+    #         while v <= 2:
+    #             D_t_v = z[v]
+    #             f[v] = self.f_function1(theta, D_t_v, epsilon, B, SNR)
+    #             v = v + 1
+    #         if math.fabs(f[1] - f[2]) < 0.00001:
+    #             break
+    #         elif f[1] < f[2]:
+    #             zu = z[1]
+    #             d = ((math.sqrt(5) - 1) / 2) * (zu - zl)
+    #             z[1] = z[2]
+    #             z[2] = zu - d
+    #         elif f[1] > f[2]:
+    #             zl = z[2]
+    #             d = ((math.sqrt(5) - 1) / 2) * (zu - zl)
+    #             z[2] = z[1]
+    #             z[1] = zl + d
+    #     D_max = (zu + zl) / 2
+    #     return D_max
+    #
+    # def f_function1(self, theta, D_t, epsilon, B, SNR):
+    #     R_th = 60000
+    #     D_max = 0.01
+    #     T = 0.005
+    #     m = B * D_t
+    #     ec = self.qfunction.EC_function(B, SNR, m, epsilon, theta, 0.005)
+    #     p = 1 - math.exp(-theta * ec * (D_max - D_t))
+    #     return (p) * (1 - epsilon)

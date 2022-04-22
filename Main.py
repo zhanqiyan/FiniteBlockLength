@@ -58,6 +58,6 @@ class Main:
 
 if __name__ == '__main__':
     main = Main()
-    print("OR")
+    print("OP")
     # main.main("OR", "equal_bandwidth_error")  # OR OS OP三种算法  三种用户配对算法
-    main.main("OR", "OMA")  # OR OS OP三种算法  三种用户配对算法
+    main.main("OP", "OMA")  # OR OS OP三种算法  三种用户配对算法

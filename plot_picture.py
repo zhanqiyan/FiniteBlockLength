@@ -93,6 +93,26 @@ class Plot_Picture:
         plt.show()
 
 
+
+    def plot_picture1(self, algorithm_name):
+
+        B_finite = [x / 1000 for x in self.opt.B_FDMA]
+
+
+        path_finite = "result/fBest_List_" + algorithm_name + "_OMA"
+        plt.grid(ls='--')  # 设置网格
+
+        fBest_List_finite = np.loadtxt(path_finite + ".txt", delimiter=',').reshape(len(B_finite))
+
+
+
+
+
+        plt.plot(B_finite, fBest_List_finite, 'c-o')
+
+
+        plt.show()
+
 if __name__ == '__main__':
     main = Plot_Picture()
-    main.plot_picture("OR")
+    main.plot_picture1("OR")

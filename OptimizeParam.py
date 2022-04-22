@@ -7,7 +7,7 @@ import numpy as np
 class OptimizeParam:
     def __init__(self):
         # self.B_FDMA = np.arange(180000, 274000, 4000)
-        self.B_FDMA = np.arange(180000, 300000, 4000)
+        self.B_FDMA = [500000] #np.arange(292000, 300000, 4000)
         self.targetFunction = TargetFunction()
         self.bisection = Bisection()
 
@@ -73,7 +73,7 @@ class OptimizeParam:
             SNR = snr[i]
             Bmin = self.findmin_B(error_i, SNR, 1e-8)
             xMin[i] = Bmin
-            xMax[i] = Bmin + 8000
+            xMax[i] = Bmin
             xInitial[i] = Bmin
         sum = 0
         for index in range(self.targetFunction.B_num - 1):
@@ -84,7 +84,7 @@ class OptimizeParam:
     def findmin_B(self, error, snr, thetamin):
         Bintial = 10000
         while True:
-            m = 2 * self.targetFunction.Dmax * Bintial
+            m = self.targetFunction.Dmax * Bintial
             EC = self.bisection.EC_B_theta(Bintial, error, snr, thetamin, m)
             if EC > 0:
                 break
