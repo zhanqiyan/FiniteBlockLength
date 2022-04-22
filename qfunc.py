@@ -60,6 +60,19 @@ class Qfunction:
         EC = -(1 / (theta * T)) * math.log((math.exp(v) / SNR) * sc.hyperu(1, 2 + w, 1 / SNR))
         return EC
 
+    # 存在误码率时有效容量计算表达式
+    def EC_function_infinity(self, B, SNR, theta, T):
+        w = - (theta * T * B) / math.log(2)
+        EC = -(1 / (theta * T)) * math.log((1 / SNR) * sc.hyperu(1, 2 + w, 1 / SNR))
+        return EC
+
+    # 存在误码率时有效容量计算表达式
+    def EC_function_err(self, B, SNR, D_t, decodeError, theta, T):
+        # w = - (theta * T * B) / math.log(2)
+        # v = theta * B * T * math.sqrt(1 / m) * self.Qfuncinv(decodeError) * math.log2(math.e)
+        EC_err = -math.sqrt(B / D_t) * self.Qfuncinv(decodeError) * math.log2(math.e)
+        return EC_err
+
     # 超几何函数2F0
     def generalized_hypergeometric_2_0(self, x, y, z):
         a = x
@@ -81,21 +94,12 @@ if __name__ == '__main__':
     D_max = 0.01
     B = 30000
     SNR = 20
-    m = 1500
-    decodeError = np.linspace(0.0001, 0.01, 100)
-
+    m = 150
+    decodeError = 0.001
+    D_t = 0.005
     theta = 0.001
     T = 0.005
-    pp = []
-    for e in decodeError:
-        EC = qf.EC_function(B, SNR, m, e, theta, T)
-        p = 1 - math.exp(-theta * EC * D_max)
-        p = p*(1-e)
-        pp.append(p)
-    plt.plot(decodeError, pp, 'r-o')
-    plt.xlabel("decodeError")
-    plt.ylabel(r"probability")
-    plt.show()
-
-
-    # print(qf.Qfuncinv(1))
+    a = qf.EC_function(B,SNR,m,decodeError,theta,T)
+    b = qf.EC_function_infinity(B,SNR,decodeError,theta,T)+qf.EC_function_err(B,SNR,D_t,decodeError,theta,T)
+    print(a)
+    print(b)

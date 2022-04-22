@@ -28,7 +28,7 @@ class Optimizer:
             for i in range(self.targetFunction.B_num):
                 X[i] = B_9
             X[9:18] = [1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7]
-            X[18:] = [1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1e-2]
+            X[18:] = [1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3]
 
             flag = self.checkSolution(X, m)
             if not flag:
@@ -116,9 +116,10 @@ class Optimizer:
             mk = 0
             # self.targetFunction.func_target_subject(func_name_subject, xBest, mk)
             # fxBest = self.targetFunction.func_target_subject(func_name_subject, xBest, mk)  # 由于迭代后惩罚因子增大，需随之重构增广目标函数
-            if totalMar % 2000 == 0:
+            if totalMar % 3000 == 0:
                 print("=============当前温度为：", tNow, " 外层循环次数为：", kIter, "===============")
                 print("总运行次数：", totalMar, "运行中间最佳目标结果fxBest：", fxBest, "xBest:", xBest)
+                # break
 
             ##============================= 结束模拟退火过程 ================================================##
         return xBest, fxBest
@@ -131,7 +132,7 @@ class Optimizer:
 
         for index in range(self.targetFunction.K):
             xMin[index] = B_avg - 6 * 1000 if xMin[index] < B_avg - 6 * 1000 else xMin[index]
-            xMax[index] = B_avg + 6 * 1000
+            xMax[index] = B_avg + 8 * 1000
 
         sum = 0
         for index in range(self.targetFunction.B_num - 1):
@@ -242,14 +243,14 @@ class Optimizer:
 
         m = 2 * self.targetFunction.Dmax * B
         EC = self.qfunction.EC_function(B, SNR, m, error_initial, theta, self.targetFunction.T)
-        func_max = (1 - math.exp(-theta * EC * self.targetFunction.Dmax))*(1-error_initial)
+        func_max = (1 - math.exp(-theta * EC * self.targetFunction.Dmax)) * (1 - error_initial)
 
         while error_initial < error_MAX:
             X_error[18 + v] = error_initial
             # func = self.targetFunction.func_target_subject(func_name_subject, X_error, 0)
             m = 2 * self.targetFunction.Dmax * B
             EC = self.qfunction.EC_function(B, SNR, m, error_initial, theta, self.targetFunction.T)
-            func = (1 - math.exp(-theta * EC * self.targetFunction.Dmax))*(1-error_initial)
+            func = (1 - math.exp(-theta * EC * self.targetFunction.Dmax)) * (1 - error_initial)
             if func > func_max:
                 func_max = func
                 error_max = error_initial

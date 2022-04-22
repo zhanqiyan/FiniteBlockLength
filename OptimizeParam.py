@@ -6,7 +6,8 @@ import numpy as np
 # 设定模拟退火仿真初始参数类
 class OptimizeParam:
     def __init__(self):
-        self.B_FDMA = np.arange(160000, 244000, 4000)
+        self.B_FDMA = np.arange(160000, 274000, 4000)
+        # self.B_FDMA = np.arange(160000, 1500000, 4000)
         self.targetFunction = TargetFunction()
         self.bisection = Bisection()
 
