@@ -19,28 +19,48 @@ class Optimizer:
         return self.targetFunction
 
     # 模拟退火算法
-    def OptimizationSSA(self, nVar, xMin, xMax, xInitial, tInitial, tFinal, alfa, meanMarkov, scale,
-                        m, theta_lo, theta_hi, func_name_subject, func_name, model):
+    def OptimizationSSA(self, nVar, xMin, xMax, xInitial, tInitial, tFinal, alfa, meanMarkov, scale, theta_lo, theta_hi,
+                        func_name_subject, model):
 
         if model == "equal_bandwidth_error":
             X = np.zeros((nVar))
             B_9 = self.targetFunction.Btotal / 9
             for i in range(self.targetFunction.B_num):
                 X[i] = B_9
-            X[9:18] = [1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7, 1e-7]
-            X[18:] = [1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3]
 
-            flag = self.checkSolution(X, m)
+            flag = self.checkSolution(X)
             if not flag:
                 return X, -100
 
-            Xtheta = self.bisection_theta(X, theta_lo, theta_hi, m)
-            X[9:18] = Xtheta[9:18]
+            theta_bar = self.bisection_theta_bar(X, theta_lo, theta_hi)
+            X[9:18] = [x / 2 for x in theta_bar]  # theta
+            X[27:36] = [0.0025, 0.0025, 0.0025, 0.0025, 0.0025, 0.0025, 0.0025, 0.0025, 0.0025]  # D
+
+            X[18:27] = [1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3, 1e-3]  # error
+
+            B = X[0:9]
+            theta = X[9:18]
+            D_t = X[27:]
+            R_th = 60000
+            T = 0.005
+            snr = self.targetFunction.snr
+            error = []
+            for i in range(self.targetFunction.K):
+                B_i = B[i]
+                theta_i = theta[i]
+                D_t_i = D_t[i]
+                SNR = snr[i]
+                ec_infinity = self.qfunction.EC_function_infinity(B_i, SNR, theta_i, T)
+                qx = math.sqrt(D_t_i / B_i) * (ec_infinity - R_th) * math.log(2)
+                epsilon_i = self.qfunction.Qfunc(qx)
+                error.append(epsilon_i)
+            # print("====================二分法产生一个新解xNew:", xNew, "=======================")
+            X[18:27] = error[:]
             fxNew = self.targetFunction.func_target_subject(func_name_subject, X, 0)
             return X, fxNew
 
         # 得到初始解和初始函数值
-        xMin, xMax, xInitial, fxInitial, = self.param_initial(xMin, xMax, xInitial, m, func_name_subject)
+        xMin, xMax, xInitial, fxInitial, = self.param_initial(xMin, xMax, xInitial, func_name_subject)
 
         # ====== 模拟退火算法初始化 ======
         xNew = np.zeros((nVar))  # 新解
@@ -75,7 +95,7 @@ class Optimizer:
             for k in range(nMarkov):  # 内循环，循环次数为Markov链长度
                 totalMar += 1  # 总 Markov链长度计数器
                 ##================================产生新解XNew=================================================##
-                xNew = self.state_generate_fuc(nVar, xNow, xMax, xMin, scale, m, theta_lo, theta_hi, func_name_subject)
+                xNew = self.state_generate_fuc(nVar, xNow, xMax, xMin, scale, theta_lo, theta_hi, func_name_subject)
 
                 ##=======================计算目标函数和能量差=====================================================##
                 # 调用目标函数计算新解的目标函数值
@@ -105,7 +125,7 @@ class Optimizer:
                         xBest[:] = xNew[:]
                         totalImprove += 1
                         # scale = scale * 0.99  # 可变搜索步长，逐步减小搜索范围，提高搜索精度
-                print("总运行次数：", totalMar, "运行中间最佳目标结果fxBest：", fxBest)
+                # print("总运行次数：", totalMar, "运行中间最佳目标结果fxBest：", fxBest, "xBest:", xBest)
 
             ##===========================温度更新函数========================================================##
             # 缓慢降温至新的温度，降温曲线：T(k)=alfa*T(k-1)
@@ -116,7 +136,7 @@ class Optimizer:
             mk = 0
             # self.targetFunction.func_target_subject(func_name_subject, xBest, mk)
             # fxBest = self.targetFunction.func_target_subject(func_name_subject, xBest, mk)  # 由于迭代后惩罚因子增大，需随之重构增广目标函数
-            if totalMar % 3000 == 0:
+            if totalMar % 1000 == 0:
                 print("=============当前温度为：", tNow, " 外层循环次数为：", kIter, "===============")
                 print("总运行次数：", totalMar, "运行中间最佳目标结果fxBest：", fxBest, "xBest:", xBest)
                 # break
@@ -126,7 +146,7 @@ class Optimizer:
 
     # 产生问题的初值解和初值解对应的函数值
     # 同时设定仿真参数的最小值和最大值
-    def param_initial(self, xMin, xMax, xInitial, m, func_name_subject):
+    def param_initial(self, xMin, xMax, xInitial, func_name_subject):
 
         B_avg = self.targetFunction.Btotal / self.targetFunction.B_num
 
@@ -147,62 +167,36 @@ class Optimizer:
     # B1,B2,B3,B4,B5,B6,B7,B8,B9
     # theta1,theta2,theta3,theta4,theta5,theta6,theta7,theta8,theta9
     # e1,e2,e3,e4,e5,e6,e7,e8,e9
-    def state_generate_fuc(self, nVar, xNow, xMax, xMin, scale, m, theta_lo, theta_hi, func_name_subject):
+    # Dt1,Dt2,Dt3,Dt4,Dt5,Dt6,Dt7,Dt8,Dt9
+    # B、theta、e、Dt的索引对应着PMU索引
+    def state_generate_fuc(self, nVar, xNow, xMax, xMin, scale, theta_lo, theta_hi, func_name_subject):
         ##================================产生新解XNew=================================================##
-        xNew = self.generate_random_solution(nVar, xNow, xMax, xMin, scale, m, func_name_subject)
+        xNew = self.generate_xNew_by_B_noarq(nVar, xNow, xMax, xMin, scale, func_name_subject)
 
-        ##================================使用二分法得到theta=================================================##
-        # theta1,theta2,theta3,theta4,theta5,theta6,theta7,theta8,theta9
-        # 对于得到新解中的B和error作为已知参数，使用二分法去求解theta
+        ##================================得到epsilon================================================##
         B = xNew[0:9]
-        error = xNew[18:]
+        theta = xNew[9:18]
+        D_t = xNew[27:]
+        R_th = 60000
+        D_max = 0.01
+        T = 0.005
         snr = self.targetFunction.snr
+        error = []
         for i in range(self.targetFunction.K):
             B_i = B[i]
+            theta_i = theta[i]
+            D_t_i = D_t[i]
             SNR = snr[i]
-            error_i = error[i]
-            m = 2 * self.targetFunction.Dmax * B_i
-            theta_single = self.bisection.calculate_theta_by_bisection(B_i, error_i, SNR, m, theta_lo, theta_hi)
-            xNew[self.targetFunction.B_num + i] = theta_single
+            ec_infinity = self.qfunction.EC_function_infinity(B_i, SNR, theta_i, T)
+            qx = math.sqrt(D_t_i / B_i) * (ec_infinity - R_th) * math.log(2)
+            epsilon_i = self.qfunction.Qfunc(qx)
+            error.append(epsilon_i)
         # print("====================二分法产生一个新解xNew:", xNew, "=======================")
-        return xNew
-
-    # 通过随机扰动产生新解，并且保证新解是有效：给定error和B，能通过二分法找到有效的theta，使得 EC=Rth,具体做法：
-    #   1、随机扰动B,然后根据B和theta,根据单调性找到error
-    #   2、然后在根据得到的error和B，根据二分法去求解theta，得到新解
-    def generate_random_solution(self, nVar, xNow, xMax, xMin, scale, m, func_name_subject):
-        # print("==============================产生一次新解====================================")
-        snr = self.targetFunction.snr
-        ##=======================随机扰动产生新解==================================================##
-        while True:
-            ##=======================随机扰动产生新解,随机扰动B得到error==================================================##
-            # xNew = self.generate_xNew_by_B(nVar, xNow, xMax, xMin, scale, m)
-            xNew = self.generate_xNew_by_B_noarq(nVar, xNow, xMax, xMin, scale, m, func_name_subject)
-
-            ##=======================判断新解是否有效==================================================##
-            # theta1,theta2,theta3,theta4,theta5,theta6,theta7,theta8,theta9
-            # 对于得到新解中的error和B作为已知参数，为了使用二分法去求解theta，判断theta取值极小时EC是否大于等于Rth
-            B = xNew[0:9]
-            error = xNew[18:]
-            flag = True
-            for i in range(9):
-                B_i = B[i]
-                SNR = snr[i]
-                error_i = error[i]
-                m = 2 * self.targetFunction.Dmax * B_i
-                single_func = self.bisection.EC_B_theta(B_i, error_i, SNR, self.theta_min, m)
-                if single_func < 0:
-                    flag = False
-                    break
-            if flag:
-                break
-
-        # print("验证通过，得到一个新解xNew:", xNew)
+        xNew[18:27] = error[:]
         return xNew
 
     # 随机扰动B产生新解
-    # 随机扰动B,然后根据B和theta,根据单调性找到error
-    def generate_xNew_by_B_noarq(self, nVar, xNow, xMax, xMin, scale, m, func_name_subject):
+    def generate_xNew_by_B_noarq(self, nVar, xNow, xMax, xMin, scale, func_name_subject):
         xNew = np.zeros((nVar))  # 新解
         xNew[:] = xNow[:]
 
@@ -211,52 +205,135 @@ class Optimizer:
         v = random.randint(0, 7)  # 产生 [0,random_var_num-1]即[0,7]之间的随机数
 
         while True:
-            # 1 随机产生B
-            flag = False
-            while True:
-                # random.normalvariate(0, 1)：产生服从均值为0、标准差为 1 的正态分布随机实数
-                xNew[v] = xNow[v] + scale * (xMax[v] - xMin[v]) * random.normalvariate(0, 1)
-                xNew[v] = max(min(xNew[v], xMax[v]), xMin[v])  # 保证新解在 [min,max] 范围内
-                sum = 0
-                for index in range(self.targetFunction.B_num - 1):
-                    sum += xNew[index]
-                xNew[self.targetFunction.B_num - 1] = self.targetFunction.Btotal - sum
-                if xNew[self.targetFunction.B_num - 1] >= xMin[self.targetFunction.B_num - 1]:
-                    flag = True
-                    break
-            if flag:
+            # random.normalvariate(0, 1)：产生服从均值为0、标准差为 1 的正态分布随机实数
+            xNew[v] = xNow[v] + scale * (xMax[v] - xMin[v]) * random.normalvariate(0, 1)
+            xNew[v] = max(min(xNew[v], xMax[v]), xMin[v])  # 保证新解在 [min,max] 范围内
+            sum = 0
+            for index in range(self.targetFunction.B_num - 1):
+                sum += xNew[index]
+            xNew[self.targetFunction.B_num - 1] = self.targetFunction.Btotal - sum
+            if xNew[self.targetFunction.B_num - 1] >= xMin[self.targetFunction.B_num - 1]:
                 break
 
-        error_initial = 0.0001
-        error_MAX = 0.2
-        error_max = error_initial
-        X_error = np.zeros(nVar)
-        X_error[:] = xNew[:]
-        # func_max = self.targetFunction.func_target_subject(func_name_subject, X_error, 0)
-
-        # X_last = np.zeros(nVar)
-        # X_last[:] = X_error[:]
-        B = X_error[v]
-        theta = X_error[9 + v]
-        SNR = self.targetFunction.snr[v]
-        # error = X_error[18 + v]
-
-        m = 2 * self.targetFunction.Dmax * B
-        EC = self.qfunction.EC_function(B, SNR, m, error_initial, theta, self.targetFunction.T)
-        func_max = (1 - math.exp(-theta * EC * self.targetFunction.Dmax)) * (1 - error_initial)
-
-        while error_initial < error_MAX:
-            X_error[18 + v] = error_initial
-            # func = self.targetFunction.func_target_subject(func_name_subject, X_error, 0)
-            m = 2 * self.targetFunction.Dmax * B
-            EC = self.qfunction.EC_function(B, SNR, m, error_initial, theta, self.targetFunction.T)
-            func = (1 - math.exp(-theta * EC * self.targetFunction.Dmax)) * (1 - error_initial)
-            if func > func_max:
-                func_max = func
-                error_max = error_initial
-            error_initial += 0.0001
-        xNew[18 + v] = error_max
+        theta, D_t = self.generate_D_theta_by_B(nVar, xNew, 1e-8, 0.4)
+        xNew[9:18] = theta[:]
+        xNew[27:] = D_t[:]
         return xNew
+
+    def generate_D_theta_by_B(self, nVar, xNow, theta_lo, theta_hi):
+        xNew = np.zeros((nVar))  # 新解
+        xNew[:] = xNow[:]
+        theta_bar = self.bisection_theta_bar(xNow, theta_lo, theta_hi)
+        B = xNew[0:9]
+        theta = []
+        D_t = []
+        for i in range(9):
+            D_t_opt = 0.001
+            theta_opt = 1e-8
+            B_i = B[i]
+            theta_bar_i = theta_bar[i]
+            snr_i = self.targetFunction.snr[i]
+            while True:
+                theta_opt = self.find_theta_opitimal(D_t_opt, B_i, snr_i, theta_bar_i)
+                f1 = self.f_function(theta_opt, D_t_opt, B_i, snr_i)
+
+                D_t_opt = self.find_D_t_opitimal(theta_opt, B_i, snr_i)
+                f2 = self.f_function(theta_opt, D_t_opt, B_i, snr_i)
+
+                if math.fabs(f1 - f2) < 0.0001:
+                    break
+            D_t.append(D_t_opt)
+            theta.append(theta_opt)
+        return theta, D_t
+
+    def find_theta_opitimal(self, D_t, B, SNR, theta_bar):
+        # theta_init = 0.000001
+        # theta_max = theta_init
+        # while theta_init < theta_bar:
+        #     if self.f_function(theta_init, D_t, B, SNR) > self.f_function(theta_max, D_t, B, SNR):
+        #         theta_max = theta_init
+        #     theta_init = theta_init + 0.0001
+        # return theta_max
+        zu = theta_bar  # alpha_up
+        zl = 0.000001  # alpha_low
+        d = ((math.sqrt(5) - 1) / 2) * (zu - zl)
+        z = [0, zl + d, zu - d]
+        f = [0, 0, 0]
+        while math.fabs(zu - zl) > 0.001:
+            v = 1
+            while v <= 2:
+                theta_v = z[v]
+                f[v] = self.f_function(theta_v, D_t, B, SNR)
+                v = v + 1
+            if math.fabs(f[1] - f[2]) < 0.00001:
+                break
+            elif f[1] < f[2]:
+                zu = z[1]
+                d = ((math.sqrt(5) - 1) / 2) * (zu - zl)
+                z[1] = z[2]
+                z[2] = zu - d
+            elif f[1] > f[2]:
+                zl = z[2]
+                d = ((math.sqrt(5) - 1) / 2) * (zu - zl)
+                z[2] = z[1]
+                z[1] = zl + d
+        theta_max = (zu + zl) / 2
+        return theta_max
+
+    def find_D_t_opitimal(self, theta, B, SNR):
+        # D_init = 0.0001
+        # D_max = D_init
+        # while D_init < 0.005:
+        #     if self.f_function(theta, D_init, B, SNR) > self.f_function(theta, D_max, B, SNR):
+        #         D_max = D_init
+        #     D_init = D_init + 0.0001
+        #     return D_max
+
+        zu = 0.005  # alpha_up
+        zl = 0.0001  # alpha_low
+        d = ((math.sqrt(5) - 1) / 2) * (zu - zl)
+        z = [0, zl + d, zu - d]
+        f = [0, 0, 0]
+        while math.fabs(zu - zl) > 0.001:
+            v = 1
+            while v <= 2:
+                D_t_v = z[v]
+                f[v] = self.f_function(theta, D_t_v, B, SNR)
+                v = v + 1
+            if math.fabs(f[1] - f[2]) < 0.00001:
+                break
+            elif f[1] < f[2]:
+                zu = z[1]
+                d = ((math.sqrt(5) - 1) / 2) * (zu - zl)
+                z[1] = z[2]
+                z[2] = zu - d
+            elif f[1] > f[2]:
+                zl = z[2]
+                d = ((math.sqrt(5) - 1) / 2) * (zu - zl)
+                z[2] = z[1]
+                z[1] = zl + d
+        D_max = (zu + zl) / 2
+        return D_max
+
+    def f_function(self, theta, D_t, B, SNR):
+        R_th = 60000
+        D_max = 0.01
+        T = 0.005
+        p = 1 - math.exp(-theta * R_th * (D_max - D_t))
+        ec_infinity = self.qfunction.EC_function_infinity(B, SNR, theta, T)
+        qx = math.sqrt(D_t / B) * (ec_infinity - R_th) * math.log(2)
+        return (p) * (1 - self.qfunction.Qfunc(qx))
+
+    def bisection_theta_bar(self, xNew, theta_lo, theta_hi):
+        B = xNew[0:9]
+        snr = self.targetFunction.snr
+        theta_bar = []
+        for i in range(self.targetFunction.K):
+            B_i = B[i]
+            SNR = snr[i]
+            theta = self.bisection.calculate_theta_bar_by_bisection(B_i, SNR, theta_lo, theta_hi)
+            theta_bar.append(theta)
+        return theta_bar
 
     def bisection_theta(self, xNew, theta_lo, theta_hi, m):
         ##================================使用二分法得到theta=================================================##
@@ -274,21 +351,18 @@ class Optimizer:
             xNew[self.targetFunction.B_num + i] = theta_single
         return xNew
 
-    def checkSolution(self, xNew, m):
+    def checkSolution(self, xNew):
         ##=======================判断新解是否有效==================================================##
         # theta1,theta2,theta3,theta4,theta5,theta6,theta7,theta8,theta9
         # 对于得到新解中的alpha和B作为已知参数，为了使用二分法去求解theta，判断theta取值极小时EC是否大于等于Rth
         flag = True
         snr = self.targetFunction.snr
         B = xNew[0:9]
-        error = xNew[18:]
         flag = True
         for i in range(9):
             B_i = B[i]
             SNR = snr[i]
-            error_i = error[i]
-            m = 2 * self.targetFunction.Dmax * B_i
-            single_func = self.bisection.EC_B_theta(B_i, error_i, SNR, self.theta_min, m)
+            single_func = self.bisection.EC_B_theta_bar(B_i, SNR, self.theta_min)
             if single_func < 0:
                 flag = False
                 break

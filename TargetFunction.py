@@ -16,17 +16,18 @@ class TargetFunction:
         self.bus_pmu = {2: 1, 4: 2, 5: 3, 6: 4, 7: 5, 8: 6, 9: 7, 11: 8, 13: 9}  # bus与pmu安装位置和索引对应map
         self.install_X = np.array([0, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0]).reshape((14, 1))  # PMU安装向量
 
-        self.m = 1000
         # 优化参数X
         # 参数的个数设置
         # 参数为1X27维向量，每一维代表含义：
         # B1,B2,B3,B4,B5,B6,B7,B8,B9
         # theta1,theta2,theta3,theta4,theta5,theta6,theta7,theta8,theta9
         # e1,e2,e3,e4,e5,e6,e7,e8,e9
-        # B、theta、error的索引对应着PMU索引
+        # Dt1,Dt2,Dt3,Dt4,Dt5,Dt6,Dt7,Dt8,Dt9
+        # B、theta、error、DT的索引对应着PMU索引
         self.B_num = self.K  # 参数带宽的个数     等于PMU数量
         self.theta_num = self.K  # theta参数个数，等于PMU数量
         self.error_num = self.K  # 误码率error参数个数，等于PMU数量
+        self.DT_num = self.K  # 传输延迟D_t参数个数，等于PMU数量
 
         self.bisection = Bisection()  # 二分法求解器
         # 连接矩阵
@@ -53,68 +54,72 @@ class TargetFunction:
         self.Btotal = Btotal
 
     # 设置优化参数个数 alpha  B  e
-    def setOptimizeParam_num(self, B_num, theta_num, error_num):
+    def setOptimizeParam_num(self, B_num, theta_num, error_num, DT_num):
         self.B_num = B_num  # 参数带宽的个数     等于PMU数量
         self.theta_num = theta_num  # theta参数个数，等于PMU数量
         self.error_num = error_num  # 误码率e参数个数，等于PMU数量
+        self.DT_num = DT_num  # 误码率e参数个数，等于PMU数量
 
     ##=================================统一调用增广目标函数入口函数======================================================##
     def func_target_subject(self, func_name_subject, X, mk):
-        B = X[0:self.B_num]
+        B = X[0:9]
         theta = X[self.B_num:self.B_num + self.theta_num]
-        error = X[self.B_num + self.theta_num:]
+        error = X[self.B_num + self.theta_num:27]
+        D_t = X[27:]
+
         if func_name_subject == "func_OR_subject":
-            return self.func_OR_subject(B, theta, error, mk)
+            return self.func_OR_subject(B, theta, D_t, error, mk)
         elif func_name_subject == "func_OS_subject":
-            return self.func_OS_subject(B, theta, error, mk)
+            return self.func_OS_subject(B, theta, D_t, error, mk)
         else:
-            return self.func_OP_subject(B, theta, error, mk)
+            return self.func_OP_subject(B, theta, D_t, error, mk)
 
     ##=================================统一调用目标函数入口函数======================================================##
     def func_target(self, func_name, X):
         B = X[0:self.B_num]
         theta = X[self.B_num:self.B_num + self.theta_num]
-        error = X[self.B_num + self.theta_num:]
+        error = X[self.B_num + self.theta_num:27]
+        D_t = X[27:]
         if func_name == "func_OR":
-            return self.func_OR(B, theta, error)
+            return self.func_OR(B, theta, D_t, error)
         elif func_name == "func_OS":
-            return self.func_OS(B, theta, error)
+            return self.func_OS(B, theta, D_t, error)
         else:
-            return self.func_OP(B, theta, error)
+            return self.func_OP(B, theta, D_t, error)
 
     ##================================= 加上惩罚函数的优化目标函数：增广目标函数===========================================##
     # OR优化目标函数  加上惩罚函数
-    def func_OR_subject(self, B, theta, error, mk):
-        return self.func_OR(B, theta, error) + mk * (
+    def func_OR_subject(self, B, theta, D_t, error, mk):
+        return self.func_OR(B, theta, D_t, error) + mk * (
                 self.subject_B(B, self.Btotal) + self.subject_error(error) + self.subject_EC(B, theta, error))
 
     # OR优化目标函数  加上惩罚函数
-    def func_OS_subject(self, B, theta, error, mk):
-        return self.func_OS(B, theta, error) + mk * (
+    def func_OS_subject(self, B, theta, D_t, error, mk):
+        return self.func_OS(B, theta, D_t, error) + mk * (
                 self.subject_B(B, self.Btotal) + self.subject_error(error) + self.subject_EC(B, theta, error))
 
     # OR优化目标函数  加上惩罚函数
-    def func_OP_subject(self, B, theta, error, mk):
-        return self.func_OP(B, theta, error) + mk * (
+    def func_OP_subject(self, B, theta, D_t, error, mk):
+        return self.func_OP(B, theta, D_t, error) + mk * (
                 self.subject_B(B, self.Btotal) + self.subject_error(error) + self.subject_EC(B, theta, error))
 
     ##===================================优化目标函数===============================================##
     # OR优化目标函数
-    def func_OR(self, B, theta, error):
-        lambda_P = self.lambdaP(B, theta, error, self.N)
+    def func_OR(self, B, theta, D_t, error):
+        lambda_P = self.lambdaP(B, theta, D_t, error, self.N)
         b = self.caculate_b(self.H, lambda_P, self.install_X)
         one_N = np.ones((1, self.N), np.int8)
         return np.matmul(one_N, b)[0, 0]
 
     # OS优化目标函数
-    def func_OS(self, B, theta, error):
-        lambda_P = self.lambdaP(B, theta, error, self.N)
+    def func_OS(self, B, theta, D_t, error):
+        lambda_P = self.lambdaP(B, theta, D_t, error, self.N)
         b = self.caculate_b(self.H, lambda_P, self.install_X)
         return min(b)
 
     # OP优化目标函数
-    def func_OP(self, B, theta, error):
-        lambda_P = self.lambdaP(B, theta, error, self.N)
+    def func_OP(self, B, theta, D_t, error):
+        lambda_P = self.lambdaP(B, theta, D_t, error, self.N)
         sum_pro = 0
         for alpham in self.all_alpham:
             tem = 1
@@ -138,23 +143,25 @@ class TargetFunction:
     # 获取可观测性概率P的函数形式
     # P为9维向量，每个元素为对应PMU时延概率
     # p = 1- exp(theta*EC*Dmax)
-    def func_pro(self, B, theta, error, K):
+    def func_pro(self, B, theta, D_t, error, K):
         pr = np.zeros((K))
         for i in range(K):
             B_i = B[i]
             theta_i = theta[i]
             error_i = error[i]
             SNR = self.snr[i]
-            m = 2 * self.Dmax * B_i
+            D_t_i = D_t[i]
+            # m = 2 * self.Dmax * B_i
+            m = B_i * D_t_i
             EC = self.qfunction.EC_function(B_i, SNR, m, error_i, theta_i, self.T)
-            pr_single = 1 - math.exp(-theta_i * EC * self.Dmax)
+            pr_single = 1 - math.exp(-theta_i * EC * (self.Dmax - D_t_i))
             pr[i] = pr_single
         return pr
 
     # lambdaP矩阵 可观测性矩阵
-    def lambdaP(self, B, theta, error, N):
+    def lambdaP(self, B, theta, D_t, error, N):
         lambda_P = np.zeros((N, N), np.float64)
-        pr = self.func_pro(B, theta, error, self.K)
+        pr = self.func_pro(B, theta, D_t, error, self.K)
         for k, v in self.bus_pmu.items():
             lambda_P[k - 1, k - 1] = pr[v - 1] * (1 - error[v - 1])
             # lambda_P[k - 1, k - 1] = pr[v - 1]

@@ -20,20 +20,18 @@ class Main:
 
         # 参数设置，优化问题参数定义，模拟退火算法参数设置
         [cName, nVar, xMin, xMax, xInitial, tInitial, tFinal, alfa, meanMarkov, scale, m, theta_lo, theta_hi,
-         func_name_subject, func_name, error_num, B_num, theta_num, BTH] = optimizeParam.ParameterSetting(
+         func_name_subject, func_name, error_num, B_num, theta_num, DT_num, BTH] = optimizeParam.ParameterSetting(
             algorithm_name)
         # 设置用户配对
-        optimizer.getTargetFunction().setOptimizeParam_num(B_num, theta_num, error_num)
-        self.targetFunction.setOptimizeParam_num(B_num, theta_num, error_num)
+        optimizer.getTargetFunction().setOptimizeParam_num(B_num, theta_num, error_num, DT_num)
+        self.targetFunction.setOptimizeParam_num(B_num, theta_num, error_num, DT_num)
 
         for index in range(len(BTH)):
             # 设置总带宽
             optimizer.getTargetFunction().setBtotal(BTH[index])
-            # optimizeParam.param_initial(xInitial, xMin, xMax, index)
             # 模拟退火算法
             [xBest, fxBest] = optimizer.OptimizationSSA(nVar, xMin, xMax, xInitial, tInitial, tFinal, alfa, meanMarkov,
-                                                        scale, m, theta_lo, theta_hi, func_name_subject, func_name,
-                                                        model)
+                                                        scale, theta_lo, theta_hi, func_name_subject, model)
             xBest_List.append(xBest.tolist())
             fxBest_List.append(fxBest)
 
@@ -60,6 +58,6 @@ class Main:
 
 if __name__ == '__main__':
     main = Main()
-    print("OS")
-    main.main("OS", "equal_bandwidth_error")  # OR OS OP三种算法  三种用户配对算法
-    # main.main("OP", "OMA")  # OR OS OP三种算法  三种用户配对算法
+    print("OR")
+    # main.main("OR", "equal_bandwidth_error")  # OR OS OP三种算法  三种用户配对算法
+    main.main("OR", "OMA")  # OR OS OP三种算法  三种用户配对算法

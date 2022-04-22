@@ -33,7 +33,7 @@ class Bisection:
     # 二分法
     # 参考网址： https://zhuanlan.zhihu.com/p/136823356
     # 对参数theta进行二分法数值分析求解值
-    def calculate_theta_bar_by_bisection(self, B, snr, theta_lo, theta_hi, eps=10 ** -3):
+    def calculate_theta_bar_by_bisection(self, B, snr, theta_lo, theta_hi, eps=10 ** -5):
         middle = (theta_lo + theta_hi) / 2
         while abs(self.EC_B_theta_bar(B, snr, middle)) > eps:
             middle = theta_lo + (theta_hi - theta_lo) / 2
@@ -47,20 +47,6 @@ class Bisection:
                     self.EC_B_theta_bar(B, snr, middle)) < eps * 1e3:
                 break
         return middle
-
-    # def calculate_B_by_bisection(self, theta, error, snr, m, Bmin, Bmax, eps=0.001):
-    #     middle = (Bmin + Bmax) / 2
-    #     while abs(self.EC_B_theta(middle, error, snr, theta, m)) > eps:
-    #         middle = Bmin + (Bmax - Bmin) / 2
-    #         # print("二分法求解, middle:", middle, "中间结果：", self.func_B(middle, theta, snr))
-    #         if self.EC_B_theta(middle, error, snr, theta, m) * self.EC_B_theta(Bmin, error, snr, theta, m) > 0:
-    #             Bmin = middle
-    #         else:
-    #             Bmax = middle
-    #         # 解决精度损失的问题
-    #         if (Bmin == middle or Bmax == middle) and abs(self.EC_B_theta(middle, error, snr, theta, m)) < eps * 10:
-    #             break
-    #     return middle
 
     # 配对中单独用户的二分法方程  使用FDMA进行传送消息
     def EC_B_theta(self, B, decodeError, SNR, theta, m):
@@ -99,7 +85,6 @@ if __name__ == '__main__':
     decodeError = 0.01
     SNR = 21
     theta = 1e-7
-    m = 1000
     res1 = bisection.EC_B_theta_bar(B,SNR,theta) +60000
     print(res1)
     theta_bar = bisection.calculate_theta_bar_by_bisection(B, SNR, 1e-7, 0.2)
