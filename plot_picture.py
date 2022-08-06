@@ -15,10 +15,10 @@ class Plot_Picture:
     def plot_picture(self, algorithm_name):
 
         B_finite = [x / 1000 for x in self.opt.B_FDMA]
-        B_no_decode_error = [x / 1000 for x in self.opt.B_FDMA]
+        B_no_decode_error = [x / 1000 for x in self.opt.B_no_decode_error]
         B_equal = [x / 1000 for x in self.opt.B_FDMA]
 
-        path_finite = "result/fBest_List_" + algorithm_name + "_OMA"
+        path_finite = "result/fBest_List_" + algorithm_name + "_OMA_2"
         path_no_decode_error = "result/fBest_List_fdma_decode_error_" + algorithm_name
         path_equal = "result/fBest_List_" + algorithm_name + "_equal_bandwidth_error"
 
@@ -26,20 +26,16 @@ class Plot_Picture:
         fBest_no_decode_error = np.loadtxt(path_no_decode_error + ".txt", delimiter=',').reshape(len(B_no_decode_error))
         fBest_equal = np.loadtxt(path_equal + ".txt", delimiter=',').reshape(len(B_equal))
 
-        plt.xlabel('Bandwidth kHz', fontsize=25)  # 设置 x轴标签
-        plt.ylabel(algorithm_name, fontsize=25)  # 设置 y轴标签
-        # plt.title(algorithm_name + " Algorithm")  # 设置标题
-        plt.grid(ls='--')  # 设置网格
 
         # 设置坐标轴范围
-        xmin = 170
-        xmax = 270
+        xmin = 160
+        xmax = 500
 
         if algorithm_name == "OR":
             ymin = 21
             ymax = 25
         elif algorithm_name == "OS":
-            ymin = 1.4
+            ymin = 1.6
             ymax = math.ceil(2.0)
         else:
             ymin = 0.95
@@ -61,7 +57,7 @@ class Plot_Picture:
             yminorLocator = MultipleLocator(0.02)  # 将x轴次刻度标签设置为5的倍数
         elif algorithm_name == "OP":
             # y_ticks = np.linspace(0, 1.0, 11)
-            y_ticks = np.arange(ymin, 0.001, 0.001)
+            y_ticks = np.arange(ymin, 1, 0.001)
             ymajorLocator = MultipleLocator(0.005)  # 将x主刻度标签设置为20的倍数
             yminorLocator = MultipleLocator(0.001)  # 将x轴次刻度标签设置为5的倍数
 
@@ -72,8 +68,8 @@ class Plot_Picture:
         # plt.legend(["Finite BlockLength", "原论文"])
         # plt.rcParams['font.sans-serif'] = ['SimHei']
         ax = plt.subplot(111)
-        xmajorLocator = MultipleLocator(10)  # 将x主刻度标签设置为20的倍数
-        xminorLocator = MultipleLocator(2)  # 将x轴次刻度标签设置为5的倍数
+        xmajorLocator = MultipleLocator(20)  # 将x主刻度标签设置为20的倍数
+        xminorLocator = MultipleLocator(5)  # 将x轴次刻度标签设置为5的倍数
         ax.xaxis.set_major_locator(xmajorLocator)
         ax.xaxis.set_minor_locator(xminorLocator)
 
@@ -86,33 +82,24 @@ class Plot_Picture:
         plt.plot(B_finite, fBest_List_finite, 'c-o')
         plt.plot(B_no_decode_error, fBest_no_decode_error, 'r:x')
         # plt.plot(B_equal, fBest_equal, 'b-.^')
-        plt.plot(B_equal[11:], fBest_equal[11:], 'b-.^')
+        plt.plot(B_equal, fBest_equal, 'b-.^')
         # plt.axhline(y = 1.98)
-        plt.legend(["Finite Block Length", "Infinite Block Length", "OMA with equal bandwidth and error rate"],
+        plt.rcParams['font.sans-serif'] = ['SimHei']
+        plt.xlabel('总带宽(kHz)', fontsize=18)  # 设置 x轴标签
+        if algorithm_name == "OR":
+            plt.ylabel("可观测性冗余度", fontsize=18)  # 设置 y轴标签
+        elif algorithm_name == "OS":
+            plt.ylabel("可观测性敏感度", fontsize=18)  # 设置 y轴标签
+        elif algorithm_name == "OP":
+            plt.ylabel("可观测性概率", fontsize=18)  # 设置 y轴标签
+        # plt.title(algorithm_name + " Algorithm")  # 设置标题
+        plt.grid(ls='--')  # 设置网格
+        plt.legend(["所提的方案", "无限块长方案", "等带宽分配方案"],
                    fontsize=18)
         plt.show()
 
 
 
-    def plot_picture1(self, algorithm_name):
-
-        B_finite = [x / 1000 for x in self.opt.B_FDMA]
-
-
-        path_finite = "result/fBest_List_" + algorithm_name + "_OMA"
-        plt.grid(ls='--')  # 设置网格
-
-        fBest_List_finite = np.loadtxt(path_finite + ".txt", delimiter=',').reshape(len(B_finite))
-
-
-
-
-
-        plt.plot(B_finite, fBest_List_finite, 'c-o')
-
-
-        plt.show()
-
 if __name__ == '__main__':
     main = Plot_Picture()
-    main.plot_picture1("OR")
+    main.plot_picture("OP")

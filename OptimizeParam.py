@@ -6,15 +6,18 @@ import numpy as np
 # 设定模拟退火仿真初始参数类
 class OptimizeParam:
     def __init__(self):
-        # self.B_FDMA = np.arange(180000, 274000, 4000)
-        self.B_FDMA = [500000] #np.arange(292000, 300000, 4000)
+        # self.B_FDMA = np.arange(180000, 504000, 4000) #OS
+        self.B_FDMA = np.arange(200000, 504000, 4000)
+        # self.B_FDMA = [725000]
+        self.B_no_decode_error = np.arange(160000, 504000, 4000)
+        # self.B_no_decode_error= np.arange(160000, 274000, 4000)
         self.targetFunction = TargetFunction()
         self.bisection = Bisection()
 
     def ParameterSetting(self, algorithm_name):
         self.cName = "IEEE_bus_14"  # 定义问题名称
         self.nVar = 36  # 给定自变量数量，y=f(x1,..xn)
-        self.tInitial = 5.0  # 设定初始退火温度(initial temperature)
+        self.tInitial = 10.0  # 设定初始退火温度(initial temperature)
         self.tFinal = 1.0  # 设定终止退火温度(stop temperature)
         self.alfa = 0.98  # 设定降温参数，T(k)=alfa*T(k-1)
         self.meanMarkov = 100  # Markov链长度，也即内循环运行次数L

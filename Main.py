@@ -25,10 +25,12 @@ class Main:
         # 设置用户配对
         optimizer.getTargetFunction().setOptimizeParam_num(B_num, theta_num, error_num, DT_num)
         self.targetFunction.setOptimizeParam_num(B_num, theta_num, error_num, DT_num)
-
-        for index in range(len(BTH)):
+        index = 0
+        while index < len(BTH):
+            # for index in range(len(BTH)):
             # 设置总带宽
             optimizer.getTargetFunction().setBtotal(BTH[index])
+            self.targetFunction.setBtotal(BTH[index])
             # 模拟退火算法
             [xBest, fxBest] = optimizer.OptimizationSSA(nVar, xMin, xMax, xInitial, tInitial, tFinal, alfa, meanMarkov,
                                                         scale, theta_lo, theta_hi, func_name_subject, model)
@@ -41,6 +43,7 @@ class Main:
                   "真实优化目标结果为：", res)
 
             optimizeParam.xInitial[:] = xBest[:]  # 将本轮优化结果作为下轮优化的初始参数
+            index = index + 1
 
         # 将结果保存为txt文件
         self.saveTxt("result/xBest_List_{}_{}".format(algorithm_name, model), xBest_List)
@@ -50,7 +53,7 @@ class Main:
     def saveTxt(self, path, np_list):
         np.savetxt(path + ".txt", np_list, fmt='%f', delimiter=',')
 
-    # 从txt文件读取数组
+    # 从txt文件504000读取数组
     def loadTxt(self, path):
         res = np.loadtxt("result/" + path + ".txt", delimiter=',')
         return res
@@ -58,6 +61,6 @@ class Main:
 
 if __name__ == '__main__':
     main = Main()
-    print("OP")
-    # main.main("OR", "equal_bandwidth_error")  # OR OS OP三种算法  三种用户配对算法
-    main.main("OP", "OMA")  # OR OS OP三种算法  三种用户配对算法
+    print("OS")
+    main.main("OS", "equal_bandwidth_error")  # OR OS OP三种算法  三种用户配对算法
+    # main.main("OP", "OMA")  # OR OS OP三种算法  三种用户配对算法

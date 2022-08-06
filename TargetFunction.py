@@ -151,10 +151,9 @@ class TargetFunction:
             error_i = error[i]
             SNR = self.snr[i]
             D_t_i = D_t[i]
-            # m = 2 * self.Dmax * B_i
             m = B_i * D_t_i
             EC = self.qfunction.EC_function(B_i, SNR, m, error_i, theta_i, self.T)
-            pr_single = 1 - math.exp(-theta_i * EC * (self.Dmax - D_t_i))
+            pr_single = 1 - math.exp(-theta_i * EC * (self.Dmax))
             pr[i] = pr_single
         return pr
 
@@ -164,7 +163,6 @@ class TargetFunction:
         pr = self.func_pro(B, theta, D_t, error, self.K)
         for k, v in self.bus_pmu.items():
             lambda_P[k - 1, k - 1] = pr[v - 1] * (1 - error[v - 1])
-            # lambda_P[k - 1, k - 1] = pr[v - 1]
         return lambda_P
 
     # 计算期望可观测性向量
